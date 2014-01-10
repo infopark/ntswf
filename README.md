@@ -6,6 +6,9 @@ Not That Simple Workflow - A layer around AWS SWF
 Common denominator of our [infopark](http://infopark.com/) internal services using
 AWS Simple Workflow.
 
+[![Gem Version](https://badge.fury.io/rb/ntswf.png)](http://badge.fury.io/rb/ntswf)
+[![Code Climate](https://codeclimate.com/github/infopark/ntswf.png)](https://codeclimate.com/github/infopark/ntswf)
+
 Usage
 -----
 ### Gemfile
