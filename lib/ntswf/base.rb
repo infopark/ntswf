@@ -1,4 +1,5 @@
 require 'aws'
+require 'active_support/core_ext/hash/indifferent_access.rb'
 
 module Ntswf
   module Base
