@@ -81,7 +81,8 @@ module Ntswf
     end
 
     def raise_if_invalid_task_list
-      [*activity_task_lists.values, decision_task_list].each do |task_list|
+      atl_values = activity_task_lists.values if activity_task_lists
+      [*atl_values, *@config.decision_task_list].each do |task_list|
         if task_list.include?(separator)
           raise "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use."
         end

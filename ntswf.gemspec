@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '>= 1.9.3'
   s.summary = 'Not That Simple Workflow'
   s.test_files = Dir.glob('spec/*.rb')
-  s.version = '1.0.3'
+  s.version = '1.0.4'
 
   s.add_runtime_dependency 'aws-sdk', '~> 1.8'
 end
