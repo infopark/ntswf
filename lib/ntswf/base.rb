@@ -1,5 +1,5 @@
 require 'aws'
-require 'active_support/core_ext/hash/indifferent_access.rb'
+require 'ostruct'
 
 module Ntswf
   module Base
@@ -12,14 +12,14 @@ module Ntswf
     # @option config [String] :secret_access_key AWS credential
     # @option config [String] :unit This worker/client's activity task list key
     def initialize(config)
-      @config = config.with_indifferent_access
+      @config = OpenStruct.new(config)
       raise_if_invalid_task_list
     end
 
     # @return [AWS::SimpleWorkflow]
     def swf
-      @swf ||= AWS::SimpleWorkflow.new(@config.slice(:access_key_id, :secret_access_key).merge(
-          use_ssl: true))
+      @swf ||= AWS::SimpleWorkflow.new(access_key_id: @config.access_key_id,
+          secret_access_key: @config.secret_access_key, use_ssl: true)
     end
 
     def workflow_name
@@ -31,15 +31,15 @@ module Ntswf
     end
 
     def domain
-      @domain ||= swf.domains[@config[:domain]]
+      @domain ||= swf.domains[@config.domain]
     end
 
     def activity_task_lists
-      @config[:activity_task_lists]
+      @config.activity_task_lists
     end
 
     def decision_task_list
-      @config[:decision_task_list] || "#{default_unit}-decision-task-list"
+      @config.decision_task_list || "#{default_unit}-decision-task-list"
     end
 
     def activity_task_list
@@ -47,22 +47,22 @@ module Ntswf
     end
 
     def default_unit
-      @default_unit ||= @config[:unit].to_s
+      @default_unit ||= @config.unit.to_s
     end
 
     def execution_version
-      @config[:execution_version]
+      @config.execution_version
     end
 
     # Parse the options stored in a task's *input* value
     # @param input [String] A task's input
-    # @return [Hash] Converted input string
+    # @return [Hash] Input, converted back from JSON
     # @see Ntswf::Client#start_execution Hash keys to be expected
     def parse_input(input)
       options, legacy_params = JSON.parse(input)
-      options = {name: options} unless options.kind_of? Hash
-      options.merge!(params: legacy_params) if legacy_params
-      options.with_indifferent_access
+      options = {"name" => options} unless options.kind_of? Hash
+      options.merge!("params" => legacy_params) if legacy_params
+      options
     end
 
     def notify(message, params)

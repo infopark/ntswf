@@ -46,7 +46,7 @@ module Ntswf
         task.continue_as_new_workflow_execution(attributes)
       when 'ActivityTaskCompleted'
         result = parse_result(event.attributes.result)
-        start_timer(task, result[:seconds_until_retry]) or task.complete_workflow_execution(
+        start_timer(task, result["seconds_until_retry"]) or task.complete_workflow_execution(
             result: event.attributes.result)
       when 'ActivityTaskFailed'
         if (event.attributes.reason == RETRY)
@@ -94,7 +94,7 @@ module Ntswf
         value = JSON.parse(result) rescue nil # expecting JSON::ParserError
       end
       value = {} unless value.kind_of? Hash
-      value.with_indifferent_access
+      value
     end
 
     private

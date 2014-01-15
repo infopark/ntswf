@@ -8,6 +8,7 @@ AWS Simple Workflow.
 
 [![Gem Version](https://badge.fury.io/rb/ntswf.png)](http://badge.fury.io/rb/ntswf)
 [![Code Climate](https://codeclimate.com/github/infopark/ntswf.png)](https://codeclimate.com/github/infopark/ntswf)
+[![Dependency Status](https://gemnasium.com/infopark/ntswf.png)](https://gemnasium.com/infopark/ntswf)
 
 Usage
 -----

@@ -5,7 +5,7 @@ module Ntswf
     include Ntswf::Base
 
     def create_domain(description)
-      swf.domains.create(@config[:domain], 3, description: description)
+      swf.domains.create(@config.domain, 3, description: description)
     end
 
     def activity_name
