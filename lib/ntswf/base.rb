@@ -39,11 +39,11 @@ module Ntswf
     end
 
     def decision_task_list
-      @config.decision_task_list || "#{default_unit}-decision-task-list"
+      @config.decision_task_list or raise "Missing decision task list configuration"
     end
 
     def activity_task_list
-      activity_task_lists[default_unit] || "#{default_unit}-activity-task-list"
+      activity_task_lists[default_unit] or raise "Missing activity task list configuration"
     end
 
     def default_unit
@@ -81,7 +81,7 @@ module Ntswf
     end
 
     def raise_if_invalid_task_list
-      for task_list in [*activity_task_lists.values, decision_task_list] do
+      [*activity_task_lists.values, decision_task_list].each do |task_list|
         if task_list.include?(separator)
           raise "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use."
         end
