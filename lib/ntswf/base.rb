@@ -76,6 +76,14 @@ module Ntswf
 
     protected
 
+    def activity_name
+      "#{default_unit}-activity"
+    end
+
+    def activity_type
+      @activity_type ||= domain.activity_types[activity_name, workflow_version]
+    end
+
     def announce(s)
       $0 = s
       log(s)
