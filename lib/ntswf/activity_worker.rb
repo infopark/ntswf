@@ -10,11 +10,7 @@ module Ntswf
       domain.activity_tasks.poll_for_single_task(activity_task_list) do |task|
         announce("got activity task #{task.activity_type.inspect} #{task.input}")
         begin
-          if task.activity_type == activity_type
-            yield task
-          else
-            raise "unknown activity type: #{task.activity_type.inspect}"
-          end
+          yield task
         rescue => e
           notify(e, activity_type: task.activity_type.inspect, input: task.input)
           details = {
