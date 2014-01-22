@@ -31,11 +31,6 @@ module Ntswf
       )
     end
 
-    # @return [String] separator part of the final *workflow_id*
-    def separator
-      ";"
-    end
-
     protected
 
     def workflow_type

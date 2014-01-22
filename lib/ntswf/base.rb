@@ -69,6 +69,11 @@ module Ntswf
       log("#{message.message}\n  #{message.backtrace.join("\n  ")}") if message.kind_of? Exception
     end
 
+    # @return [String] separator for composite *workflow_id*
+    def separator
+      ";"
+    end
+
     protected
 
     def announce(s)
