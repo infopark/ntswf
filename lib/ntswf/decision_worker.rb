@@ -53,7 +53,7 @@ module Ntswf
           schedule(task, task.events.first)
         else
           start_timer(task) or task.fail_workflow_execution(
-              event.attributes.to_h.slice(:details, :reason))
+              event.attributes.to_h.keep_if {|k| [:details, :reason].include? k})
         end
       when 'ActivityTaskTimedOut'
         notify("Timeout in Simple Workflow. Possible cause: all workers busy",
