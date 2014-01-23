@@ -11,7 +11,9 @@ module Ntswf
     # reason:: reschedule if {RETRY}
     # result:: Interpreted as {Hash}, see below for keys
     # Result keys
-    # :seconds_until_retry:: Planned reschedule after task completion
+    # :seconds_until_retry::
+    # Planned re-schedule after task completion. Please note that
+    # given an *:interval* option the behaviour of this key is undefined
     def process_decision_task
       announce("polling for decision task #{decision_task_list}")
       domain.decision_tasks.poll_for_single_task(decision_task_list) do |task|
@@ -33,17 +35,7 @@ module Ntswf
       when 'WorkflowExecutionStarted'
         schedule(task, event)
       when 'TimerFired'
-        start_event = task.events.first
-        keys = [
-          :child_policy,
-          :execution_start_to_close_timeout,
-          :input,
-          :tag_list,
-          :task_list,
-          :task_start_to_close_timeout,
-        ]
-        attributes = start_event.attributes.to_h.keep_if {|k| keys.include? k}
-        task.continue_as_new_workflow_execution(attributes)
+        retry_or_continue_as_new(task, task.events.first)
       when 'ActivityTaskCompleted'
         result = parse_result(event.attributes.result)
         start_timer(task, result["seconds_until_retry"]) or task.complete_workflow_execution(
@@ -70,6 +62,24 @@ module Ntswf
       end
       task.start_timer(interval.to_i) if interval
       interval
+    end
+
+    def retry_or_continue_as_new(task, original_event)
+      options = parse_input(original_event.attributes.input)
+      if options['interval']
+        keys = [
+          :child_policy,
+          :execution_start_to_close_timeout,
+          :input,
+          :tag_list,
+          :task_list,
+          :task_start_to_close_timeout,
+        ]
+        attributes = original_event.attributes.to_h.keep_if {|k| keys.include? k}
+        task.continue_as_new_workflow_execution(attributes)
+      else
+        schedule(task, original_event)
+      end
     end
 
     def schedule(task, data_providing_event)
