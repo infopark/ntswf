@@ -5,6 +5,11 @@ module Ntswf
   module ActivityWorker
     include Ntswf::Worker
 
+    # Start the worker loop for activity tasks.
+    def process_activities
+      loop { in_subprocess :process_activity_task }
+    end
+
     def process_activity_task
       announce("polling for activity task #{activity_task_list}")
       domain.activity_tasks.poll_for_single_task(activity_task_list) do |task|

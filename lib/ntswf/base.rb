@@ -9,6 +9,7 @@ module Ntswf
     # @option config [String] :decision_task_list The task list name for decisions
     # @option config [String] :domain The SWF domain name
     # @option config [Numeric] :execution_version Value allowing clients to reject future execution versions
+    # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
     # @option config [String] :secret_access_key AWS credential
     # @option config [String] :unit This worker/client's activity task list key
     def initialize(config)

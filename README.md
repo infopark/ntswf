@@ -44,7 +44,7 @@ class Decider
 end
 
 config = {domain: 'my_domain', unit: 'my_app'} # ...
-loop { Decider.new(config).process_decision_task }
+Decider.new(config).process_decisions
 ```
 
 ### Activity worker
@@ -62,7 +62,7 @@ class Worker
 end
 
 config = {domain: 'my_domain', unit: 'my_worker'} # ...
-loop { Worker.new(config).process_activity_task }
+Worker.new(config).process_activities
 ```
 
 ### Setup helpers

@@ -23,4 +23,12 @@ describe Ntswf::ActivityWorker do
       it { should eq :accepted }
     end
   end
+
+  describe "activity loop" do
+    it "should loop processing tasks in subprocesses" do
+      worker.should_receive(:in_subprocess).with(:process_activity_task).exactly(9).times
+      worker.should_receive(:in_subprocess).with(:process_activity_task).ordered.and_raise "break"
+      worker.process_activities rescue nil
+    end
+  end
 end

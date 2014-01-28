@@ -211,4 +211,12 @@ describe Ntswf::DecisionWorker do
       end
     end
   end
+
+  describe "decision loop" do
+    it "should loop processing tasks in subprocesses" do
+      worker.should_receive(:in_subprocess).with(:process_decision_task).exactly(9).times
+      worker.should_receive(:in_subprocess).with(:process_decision_task).ordered.and_raise "break"
+      worker.process_decisions rescue nil
+    end
+  end
 end

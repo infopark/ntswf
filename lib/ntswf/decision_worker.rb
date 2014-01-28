@@ -5,6 +5,11 @@ module Ntswf
   module DecisionWorker
     include Ntswf::Worker
 
+    # Start the worker loop for decision tasks.
+    def process_decisions
+      loop { in_subprocess :process_decision_task }
+    end
+
     # Process a decision task.
     # The following task values are interpreted:
     # input:: see {Ntswf::Client#start_execution}
