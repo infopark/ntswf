@@ -9,7 +9,7 @@ describe Ntswf::ActivityWorker do
 
   let(:config) { { unit: "test", activity_task_lists: { "test" => "task_list" } } }
   let(:worker) { Worker.new config }
-  let(:activity_task) { mock input: "{}" }
+  let(:activity_task) { double input: "{}" }
 
   describe "processing an activity task" do
     before do
