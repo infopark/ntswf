@@ -1,15 +1,11 @@
 require "ntswf"
 
 describe Ntswf::ActivityWorker do
-  class Worker
-    include Ntswf::ActivityWorker
-  end
-
-  before { Worker.any_instance.stub(announce: nil, log: nil) }
-
   let(:config) { { unit: "test", activity_task_lists: { "test" => "task_list" } } }
-  let(:worker) { Worker.new config }
+  let(:worker) { Ntswf.create(:activity_worker, config) }
   let(:activity_task) { double input: "{}" }
+
+  before { worker.stub(announce: nil, log: nil) }
 
   describe "processing an activity task" do
     before do

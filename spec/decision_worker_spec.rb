@@ -2,15 +2,11 @@ require "ntswf"
 require "json"
 
 describe Ntswf::DecisionWorker do
-  class Worker
-    include Ntswf::DecisionWorker
-  end
-
   let(:atl_config) { { "test" => "atl" } }
   let(:dtl_config) { "dtl" }
   let(:unit) { "testt" }
   let(:config) { { unit: unit, decision_task_list: dtl_config, activity_task_lists: atl_config } }
-  let(:worker) { Worker.new config }
+  let(:worker) { Ntswf.create(:decision_worker, config) }
 
   let(:options) { {} }
   let(:input) { options.merge('params' => {'test' => 'value'}).to_json }

@@ -12,7 +12,8 @@ module Ntswf
     # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
     # @option config [String] :secret_access_key AWS credential
     # @option config [String] :unit This worker/client's activity task list key
-    def initialize(config)
+    # @raise If a task list name is invalid
+    def configure(config)
       @config = OpenStruct.new(config)
       raise_if_invalid_task_list
     end

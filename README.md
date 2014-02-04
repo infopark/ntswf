@@ -15,54 +15,32 @@ Usage
 -----
 ### Gemfile
 
-    gem 'ntswf', '~> 1.0'
+    gem 'ntswf', '~> 2.0'
 
 ### Client
 ```
-class WorkflowClient
-  include Ntswf::Client
-
-  def enqueue!
-    start_execution(
-      execution_id: 'my_singleton_task',
-      name: 'my_worker_name',
-      params: {my: :param},
-      unit: 'my_worker',
-    )
-  end
-end
-
 config = {domain: 'my_domain', unit: 'my_app'} # ...
-WorkflowClient.new(config).enqueue!
+Ntswf.create(:client, config).start_execution(
+  execution_id: 'my_singleton_task',
+  name: 'my_worker_name',
+  params: {my_param: :param},
+  unit: 'my_worker',
+)
 ```
-See {Ntswf::Base#initialize} for configuration options.
+See {Ntswf::Base#configure} for configuration options.
 
 ### Decision worker
 ```
-class Decider
-  include Ntswf::DecisionWorker
-end
-
 config = {domain: 'my_domain', unit: 'my_app'} # ...
-Decider.new(config).process_decisions
+Ntswf.create(:decision_worker, config).process_decisions
 ```
 
 ### Activity worker
 ```
-class Worker
-  include Ntswf::ActivityWorker
-
-  def process_activity_task
-    super do |task|
-      options = parse_input(task.input)
-      # ...
-      task.complete!(result: 'OK')
-    end
-  end
-end
-
 config = {domain: 'my_domain', unit: 'my_worker'} # ...
-Worker.new(config).process_activities
+worker = Ntswf.create(:activity_worker, config)
+worker.on_task ->(task) { Ntswf.result task.params['my_param'] }
+worker.process_activities
 ```
 
 ### Setup helpers
