@@ -1,9 +1,12 @@
 require "ntswf"
+require "json"
 
 describe Ntswf::ActivityWorker do
   let(:config) { { unit: "test", activity_task_lists: { "test" => "task_list" } } }
   let(:worker) { Ntswf.create(:activity_worker, config) }
-  let(:activity_task) { double input: "{}" }
+  let(:input) { "{}" }
+  let(:activity_task) { double activity_type: nil, input: input }
+  let(:test_result) { [] }
 
   before { worker.stub(announce: nil, log: nil) }
 
@@ -15,8 +18,107 @@ describe Ntswf::ActivityWorker do
 
     context "given foreign activity type" do
       before { activity_task.stub activity_type: :some_random_thing }
-      subject { worker.process_activity_task { :accepted } }
-      it { should eq :accepted }
+      specify { expect { worker.process_activity_task }.to_not raise_error }
+    end
+
+    context "given a task callback" do
+      subject do
+        worker.process_activity_task
+        test_result.join
+      end
+
+      context "as lambda" do
+        before { worker.on_activity ->(task) { test_result << "Lambda" } }
+        it { should eq "Lambda" }
+      end
+
+      context "as block" do
+        before { worker.on_activity { test_result << "Block" } }
+        it { should eq "Block" }
+      end
+    end
+
+    describe "the task description" do
+      let(:input) { {name: "name", params: {my_param: :ok}, version: 1}.to_json }
+      before { worker.on_activity ->(task) { test_result << task } }
+      subject do
+        worker.process_activity_task
+        test_result.first
+      end
+
+      its([:activity_task]) { should eq activity_task }
+      its([:name]) { should eq "name" }
+      its([:params]) { should eq("my_param" => "ok") }
+      its([:version]) { should eq 1 }
+    end
+
+    describe "the task's return value" do
+      let(:callback) { ->(task) { returned } }
+      before { worker.on_activity callback }
+      context "given an error" do
+        let(:message) { "error message" }
+        let(:returned) { {error: message} }
+        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { worker.process_activity_task }
+
+        describe "report to SWF" do
+          subject { test_result.first }
+          its([:reason]) { should eq "Error" }
+          its([:details]) { should eq({error: message}.to_json) }
+        end
+
+        describe "keeping SWF limits" do
+          let(:message) { "a" * 40000 }
+          subject { JSON.parse(test_result.first[:details])["error"] }
+          its(:size) { should be <= 32700 }
+          its(:size) { should be >= 1000 }
+        end
+      end
+
+      context "given a retry" do
+        let(:returned) { {seconds_until_retry: 45} }
+        before { activity_task.should_receive(:complete!).with(result: returned.to_json) }
+        specify { worker.process_activity_task }
+      end
+
+      context "given an error with immediate retry" do
+        let(:returned) { {error: "try again", seconds_until_retry: 0} }
+        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { worker.process_activity_task }
+
+        describe "report to SWF" do
+          subject { test_result.first }
+          its([:reason]) { should eq "Retry" }
+          its([:details]) { should eq({error: "try again"}.to_json) }
+        end
+      end
+
+      context "given an outcome" do
+        let(:outcome) { {is: "ok"} }
+        let(:returned) { {outcome: outcome} }
+        before { activity_task.should_receive(:complete!).with(result: returned.to_json) }
+        specify { worker.process_activity_task }
+      end
+
+      context "given an exception" do
+        let(:message) { "an exception" }
+        let(:callback) { ->(task) { raise message } }
+        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { worker.process_activity_task }
+
+        describe "report to SWF" do
+          subject { test_result.first }
+          its([:reason]) { should eq "Exception" }
+          its([:details]) { should eq({error: "an exception", exception: "RuntimeError"}.to_json) }
+        end
+
+        describe "keeping SWF limits" do
+          let(:message) { "a" * 40000 }
+          subject { JSON.parse(test_result.first[:details])["error"] }
+          its(:size) { should be <= 32700 }
+          its(:size) { should be >= 1000 }
+        end
+      end
     end
   end
 
