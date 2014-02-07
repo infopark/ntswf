@@ -18,6 +18,16 @@ module Ntswf
       raise_if_invalid_task_list
     end
 
+    # Configure a proc or block to be called on handled errors
+    # @yieldparam error [Hash]
+    #   Description of the error:
+    #   :message:: The error message or the exception
+    #   :params:: Error details
+    # @param proc [Proc] The callback
+    def on_notify(proc = nil, &block)
+      @notify_callback = proc || block
+    end
+
     # @return [AWS::SimpleWorkflow]
     def swf
       @swf ||= AWS::SimpleWorkflow.new(access_key_id: @config.access_key_id,
@@ -69,6 +79,7 @@ module Ntswf
 
     def notify(message, params)
       log("#{message.message}\n  #{message.backtrace.join("\n  ")}") if message.kind_of? Exception
+      @notify_callback.call(message: message, params: params) if @notify_callback
     end
 
     # @return [String] separator for composite *workflow_id*
