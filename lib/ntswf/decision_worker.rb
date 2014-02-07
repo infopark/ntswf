@@ -16,9 +16,7 @@ module Ntswf
     # reason:: reschedule if {RETRY}
     # result:: Interpreted as {Hash}, see below for keys
     # Result keys
-    # :seconds_until_retry::
-    # Planned re-schedule after task completion. Please note that
-    # given an *:interval* option the behaviour of this key is undefined
+    # :seconds_until_retry:: See {ActivityWorker#on_activity}
     def process_decision_task
       announce("polling for decision task #{decision_task_list}")
       domain.decision_tasks.poll_for_single_task(decision_task_list) do |task|

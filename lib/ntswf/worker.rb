@@ -7,7 +7,7 @@ module Ntswf
     # *reason* value to force task reschedule, may be set if the worker is unable process the task
     RETRY = "Retry"
 
-    # Run a method in a separate thread.
+    # Run a method in a separate process.
     # This will ensure the call lives on if the master process is terminated.
     # If the *:subprocess_retries* configuration is set {StandardError}s during the
     # method call will be retried accordingly.

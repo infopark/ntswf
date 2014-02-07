@@ -2,38 +2,35 @@ require "ntswf/worker"
 require "json"
 
 describe Ntswf::Worker do
-  class Worker
-    include Ntswf::Worker
+  let(:config) { {} }
+  let(:worker) { Ntswf.create(:worker, config) }
 
-    def initialize(config)
-      super config
+  before do
+    worker.stub(announce: nil, log: nil)
+    worker.instance_exec do
       @rd, @wr = IO.pipe
-    end
 
-    def test
-      @wr.write({ method: __method__, pid: Process.pid }.to_json)
-      @wr.close
-    end
-
-    def fail_twice
-      fails = @fails.to_i
-      @wr.write fails
-      @fails = fails + 1
-      if fails < 2
-        raise "forced exception"
+      def test
+        @wr.write({ method: __method__, pid: Process.pid }.to_json)
+        @wr.close
       end
-      @wr.write "done"
-    end
 
-    def output
-      @wr.close
-      @rd.read
+      def fail_twice
+        fails = @fails.to_i
+        @wr.write fails
+        @fails = fails + 1
+        if fails < 2
+          raise "forced exception"
+        end
+        @wr.write "done"
+      end
+
+      def output
+        @wr.close
+        @rd.read
+      end
     end
   end
-
-  before { Worker.any_instance.stub(announce: nil, log: nil) }
-
-  let(:worker) { Worker.new({}) }
 
   describe "subprocess" do
     before { worker.in_subprocess :test }
@@ -71,7 +68,7 @@ describe Ntswf::Worker do
     end
 
     context "single retry" do
-      let(:worker) { Worker.new(subprocess_retries: 1) }
+      let(:config) { {subprocess_retries: 1} }
       subject { output }
       it { should eq "01" }
 
@@ -82,7 +79,7 @@ describe Ntswf::Worker do
     end
 
     context "multiple retries" do
-      let(:worker) { Worker.new(subprocess_retries: 2) }
+      let(:config) { {subprocess_retries: 2} }
 
       describe "calls" do
         subject { output }
