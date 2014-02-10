@@ -35,27 +35,33 @@ module Ntswf
     def process_decision_event(task, event)
       log("processing event #{event.inspect}")
       case event.event_type
-      when 'WorkflowExecutionStarted'
-        schedule(task, event)
-      when 'TimerFired'
-        retry_or_continue_as_new(task, task.events.first)
-      when 'ActivityTaskCompleted'
-        result = parse_result(event.attributes.result)
-        start_timer(task, result["seconds_until_retry"]) or task.complete_workflow_execution(
-            result: event.attributes.result)
-      when 'ActivityTaskFailed'
-        if (event.attributes.reason == RETRY)
-          schedule(task, task.events.first)
-        else
-          start_timer(task) or task.fail_workflow_execution(
-              event.attributes.to_h.keep_if {|k| [:details, :reason].include? k})
-        end
-      when 'ActivityTaskTimedOut'
-        notify("Timeout in Simple Workflow. Possible cause: all workers busy",
-            workflow_execution: task.workflow_execution.inspect)
-        start_timer(task) or task.cancel_workflow_execution(
-            details: 'activity task timeout')
+      when 'WorkflowExecutionStarted' then schedule(task, event)
+      when 'TimerFired' then retry_or_continue_as_new(task, task.events.first)
+      when 'ActivityTaskCompleted' then activity_task_completed(task, event)
+      when 'ActivityTaskFailed' then activity_task_failed(task, event)
+      when 'ActivityTaskTimedOut' then activity_task_timed_out(task, event)
       end
+    end
+
+    def activity_task_completed(task, event)
+      result = parse_result(event.attributes.result)
+      start_timer(task, result["seconds_until_retry"]) or task.complete_workflow_execution(
+          result: event.attributes.result)
+    end
+
+    def activity_task_failed(task, event)
+      if (event.attributes.reason == RETRY)
+        schedule(task, task.events.first)
+      else
+        start_timer(task) or task.fail_workflow_execution(
+            event.attributes.to_h.keep_if {|k| [:details, :reason].include? k})
+      end
+    end
+
+    def activity_task_timed_out(task, event)
+      notify("Timeout in Simple Workflow. Possible cause: all workers busy",
+          workflow_execution: task.workflow_execution.inspect)
+      start_timer(task) or task.cancel_workflow_execution(details: 'activity task timeout')
     end
 
     def start_timer(task, interval = nil)
