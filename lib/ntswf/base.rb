@@ -5,10 +5,15 @@ module Ntswf
   module Base
     # @param config [Hash] A configuration with the following keys:
     # @option config [String] :access_key_id AWS credential
-    # @option config [Hash] :activity_task_lists The task list names for activities as hash (see also *:unit*)
+    # @option config [Hash] :activity_task_lists
+    #   The task list names for activities as hash (see also *:unit*)
     # @option config [String] :decision_task_list The task list name for decisions
     # @option config [String] :domain The SWF domain name
-    # @option config [Numeric] :execution_version Value allowing clients to reject future execution versions
+    # @option config [Numeric] :execution_version
+    #   Value allowing clients to reject future execution versions
+    # @option config [String] :pidfile
+    #   A path receiving the current PID for looping methods. Causes exit, if
+    #   overwritten by another process. See {Worker#in_subprocess}
     # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
     # @option config [String] :secret_access_key AWS credential
     # @option config [String] :unit This worker/client's activity task list key
