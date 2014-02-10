@@ -11,7 +11,9 @@ module Ntswf
     #   :activity_task:: The {AWS::SimpleWorkflow::ActivityTask}
     #   :name:: Kind of task
     #   :params:: Custom parameters given to the execution (parsed back from JSON)
+    #   :run_id:: The workflow execution's run ID
     #   :version:: Client version
+    #   :workflow_id:: The workflow execution's workflow ID
     #
     #   See {Ntswf::Client#start_execution}'s options for details
     # @param proc [Proc] The callback
@@ -54,7 +56,12 @@ module Ntswf
     protected
 
     def describe(activity_task)
-      options = parse_input(activity_task.input).merge(activity_task: activity_task)
+      options = parse_input(activity_task.input)
+      options.merge!(
+        activity_task: activity_task,
+        run_id: activity_task.workflow_execution.run_id,
+        workflow_id: activity_task.workflow_execution.workflow_id,
+      )
       options.map { |k, v| {k.to_sym => v} }.reduce(&:merge!)
     end
 

@@ -5,7 +5,9 @@ describe Ntswf::ActivityWorker do
   let(:config) { { unit: "test", activity_task_lists: { "test" => "task_list" } } }
   let(:worker) { Ntswf.create(:activity_worker, config) }
   let(:input) { "{}" }
-  let(:activity_task) { double activity_type: nil, input: input }
+  let(:activity_task) { double activity_type: nil, input: input, workflow_execution: execution }
+  let(:execution) { AWS::SimpleWorkflow::WorkflowExecution.new("test", "workflow_id", "run_id") }
+
   let(:test_result) { [] }
 
   before { worker.stub(announce: nil, log: nil) }
@@ -49,7 +51,9 @@ describe Ntswf::ActivityWorker do
       its([:activity_task]) { should eq activity_task }
       its([:name]) { should eq "name" }
       its([:params]) { should eq("my_param" => "ok") }
+      its([:run_id]) { should eq "run_id" }
       its([:version]) { should eq 1 }
+      its([:workflow_id]) { should eq "workflow_id" }
     end
 
     describe "the task's return value" do
