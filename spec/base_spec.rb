@@ -8,7 +8,7 @@ describe Ntswf::Base do
   describe "processing an activity task" do
     context "given a notification callback" do
       subject do
-        base.notify("Exception", detail: 1)
+        base.notify("Exception", {})
         test_result.join
       end
 
@@ -20,6 +20,15 @@ describe Ntswf::Base do
       context "as block" do
         before { base.on_notify { test_result << "Block" } }
         it { should eq "Block" }
+      end
+
+      context "as method" do
+        def test_method(options)
+          test_result << "Method"
+        end
+
+        before { base.on_notify method :test_method }
+        it { should eq "Method" }
       end
     end
 
