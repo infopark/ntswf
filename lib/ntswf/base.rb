@@ -1,5 +1,6 @@
 require 'aws'
 require 'ostruct'
+require 'securerandom'
 
 module Ntswf
   module Base
@@ -16,10 +17,14 @@ module Ntswf
     #   overwritten by another process. See {Worker#in_subprocess}
     # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
     # @option config [String] :secret_access_key AWS credential
+    # @option config [String] :task_list_suffix_file
+    #   Development option.
+    #   A random ID is stored at the given path, and appended to all task list names.
     # @option config [String] :unit This worker/client's activity task list key
     # @raise If a task list name is invalid
     def configure(config)
       @config = OpenStruct.new(config)
+      autocomplete_task_list_names!
       raise_if_invalid_task_list
     end
 
@@ -121,6 +126,27 @@ module Ntswf
           raise "Invalid config '#{task_list}': Dots and spaces not allowed."
         end
       end
+    end
+
+    def autocomplete_task_list_names!
+      @config.decision_task_list = autocomplete(@config.decision_task_list, "master-dtl")
+      if @config.activity_task_lists
+        @config.activity_task_lists.each do |key, value|
+          @config.activity_task_lists[key] = autocomplete(value, "#{key}-atl")
+        end
+      end
+    end
+
+    def autocomplete(value, fallback)
+      value = fallback unless value.kind_of? String
+      "#{value}#{task_list_suffix}"
+    end
+
+    def task_list_suffix
+      file = @config.task_list_suffix_file
+      return "" unless file
+      File.write(file, SecureRandom.hex(9)) unless File.exist?(file)
+      @suffix ||= File.read(file)
     end
   end
 end
