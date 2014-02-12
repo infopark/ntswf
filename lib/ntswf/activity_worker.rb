@@ -39,21 +39,28 @@ module Ntswf
       announce("polling for activity task #{activity_task_list}")
       domain.activity_tasks.poll_for_single_task(activity_task_list) do |activity_task|
         announce("got activity task #{activity_task.activity_type.inspect} #{activity_task.input}")
-        begin
-          returned_hash = @task_callback.call(describe(activity_task)) if @task_callback
-          process_returned_hash(activity_task, returned_hash)
-        rescue => e
-          notify(e, activity_type: activity_task.activity_type.inspect, input: activity_task.input)
-          details = {
-            error: e.message[0, 1000],
-            exception: e.class.to_s[0, 1000],
-          }
-          activity_task.fail!(details: details.to_json, reason: 'Exception')
-        end
+        process_single_task activity_task
       end
     end
 
     protected
+
+    def process_single_task(activity_task)
+      returned_hash = @task_callback.call(describe(activity_task)) if @task_callback
+      process_returned_hash(activity_task, returned_hash)
+    rescue => exception
+      fail_with_exception(activity_task, exception)
+    end
+
+    def fail_with_exception(activity_task, exception)
+      notify(exception, activity_type: activity_task.activity_type.inspect,
+          input: activity_task.input)
+      details = {
+        error: exception.message[0, 1000],
+        exception: exception.class.to_s[0, 1000],
+      }
+      activity_task.fail!(details: details.to_json, reason: 'Exception')
+    end
 
     def describe(activity_task)
       options = parse_input(activity_task.input)
