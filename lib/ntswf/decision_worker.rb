@@ -36,7 +36,7 @@ module Ntswf
       log("processing event #{event.inspect}")
       case event.event_type
       when 'WorkflowExecutionStarted' then schedule(task, event)
-      when 'TimerFired' then retry_or_continue_as_new(task, task.events.first)
+      when 'TimerFired' then retry_or_continue_as_new(task, event)
       when 'ActivityTaskCompleted' then activity_task_completed(task, event)
       when 'ActivityTaskFailed' then activity_task_failed(task, event)
       when 'ActivityTaskTimedOut' then activity_task_timed_out(task, event)
@@ -45,8 +45,7 @@ module Ntswf
 
     def activity_task_completed(task, event)
       result = parse_result(event.attributes.result)
-      start_timer(task, result["seconds_until_retry"]) or task.complete_workflow_execution(
-          result: event.attributes.result)
+      start_timer(task, result) or task.complete_workflow_execution(result: event.attributes.result)
     end
 
     def activity_task_failed(task, event)
@@ -64,18 +63,19 @@ module Ntswf
       start_timer(task) or task.cancel_workflow_execution(details: 'activity task timeout')
     end
 
-    def start_timer(task, interval = nil)
+    def start_timer(task, result = {})
+      interval = result["seconds_until_retry"] || result["seconds_until_restart"]
       unless interval
         options = parse_input(task.events.first.attributes.input)
         interval = options['interval']
       end
-      task.start_timer(interval.to_i) if interval
+      task.start_timer(interval.to_i, control: result.to_json) if interval
       interval
     end
 
-    def retry_or_continue_as_new(task, original_event)
-      options = parse_input(original_event.attributes.input)
-      if options['interval']
+    def retry_or_continue_as_new(task, event)
+      original_event = task.events.first
+      if to_be_continued?(task, event)
         keys = [
           :child_policy,
           :execution_start_to_close_timeout,
@@ -117,6 +117,14 @@ module Ntswf
     end
 
     private
+
+    def to_be_continued?(task, event)
+      options = parse_input(task.events.first.attributes.input)
+      return true if options["interval"]
+      started_event = task.events.find { |e| e.event_id == event.attributes.started_event_id }
+      result = parse_result(started_event.attributes.to_h[:control])
+      result["seconds_until_restart"] || result["perform_again"]
+    end
 
     # transitional, until all apps speak the input options protocol
     def guess_app_from(data_providing_event)

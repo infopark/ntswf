@@ -16,10 +16,11 @@ describe Ntswf::DecisionWorker do
   let(:attributes) { double("Attributes", attributes_hash.merge(to_h: attributes_hash)) }
   let(:workflow_execution) { double("Workflow Execution", workflow_type: double(name: 'test-wf')) }
   let(:event) do
-    double("Event", attributes: attributes, event_type: event_type, workflow_execution:
+    double("Event", attributes: attributes, event_id: 1, event_type: event_type, workflow_execution:
         workflow_execution)
   end
-  let(:task) { double("Task", new_events: [event], events: [event]).as_null_object }
+  let(:events) { [event] }
+  let(:task) { double("Task", new_events: [event], events: events).as_null_object }
 
   before { worker.stub(announce: nil, log: nil, activity_type: "test_activity") }
 
@@ -57,7 +58,16 @@ describe Ntswf::DecisionWorker do
           let(:result) { {seconds_until_retry: 321}.to_json }
 
           it "schedules a timer event" do
-            task.should_receive(:start_timer).with(321)
+            task.should_receive(:start_timer).with(321, anything)
+            worker.process_decision_task
+          end
+        end
+
+        context "when requesting re-execution per seconds_until_restart" do
+          let(:result) { {seconds_until_restart: "321"}.to_json }
+
+          it "schedules a timer event" do
+            task.should_receive(:start_timer).with(321, control: result)
             worker.process_decision_task
           end
         end
@@ -139,11 +149,18 @@ describe Ntswf::DecisionWorker do
 
       describe "TimerFired" do
         let(:event_type) {"TimerFired"}
+        let(:started_attributes_hash) { {} }
+        let(:started_attributes) do
+          double("Started Attributes", started_attributes_hash.merge(to_h: started_attributes_hash))
+        end
+        let(:started_event) { double(attributes: started_attributes, event_id: 4) }
+        let(:events) { [event, started_event, event] }
         let(:attributes_hash) do
           {
             child_policy: 1,
             execution_start_to_close_timeout: 2,
             input: input,
+            started_event_id: 4,
             tag_list: ["tag"],
             task_list: "list",
             task_start_to_close_timeout: 3,
@@ -153,10 +170,30 @@ describe Ntswf::DecisionWorker do
         context "given an interval option" do
           let(:options) { {interval: 1234} }
 
-          it "should continue wiht mandatory attributes" do
+          it "should continue with mandatory attributes" do
             task.should_receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
             worker.process_decision_task
+          end
+        end
+
+        context "given seconds_until_restart" do
+          let(:control) { {seconds_until_restart: 10}.to_json }
+          let(:started_attributes_hash) { {control: control} }
+
+          it "should continue as new" do
+            task.should_receive(:continue_as_new_workflow_execution).with(hash_including(
+                attributes_hash))
+            worker.process_decision_task
+          end
+
+          describe "backwards compatibility" do
+            let(:control) { {perform_again: 9}.to_json }
+
+            it "should continue as new" do
+              task.should_receive(:continue_as_new_workflow_execution)
+              worker.process_decision_task
+            end
           end
         end
 
@@ -189,7 +226,7 @@ describe Ntswf::DecisionWorker do
             let(:event_type) { event }
 
             it "should start a timer" do
-              task.should_receive(:start_timer).with(1234)
+              task.should_receive(:start_timer).with(1234, anything)
               worker.process_decision_task
             end
           end

@@ -21,8 +21,10 @@ module Ntswf
     #   Processing result. The following keys are interpreted accordingly:
     #   :error:: Fails the task with the given error details.
     #   :outcome:: Completes the task, storing the outcome's value (as JSON).
+    #   :seconds_until_restart::
+    #     Starts the task as new, after the given delay.
     #   :seconds_until_retry::
-    #     Re-schedules the task after the given delay.
+    #     Re-schedules the task, after the given delay.
     #     In combination with an *:error*: Marks the task for immediate re-scheduling,
     #     ignoring the value.
     #     Please note that the behaviour is undefined if an *:interval* option has been set.
