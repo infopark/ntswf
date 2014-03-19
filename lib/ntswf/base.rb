@@ -67,11 +67,6 @@ module Ntswf
       @config.decision_task_list or raise "Missing decision task list configuration"
     end
 
-    def activity_task_list
-      activity_task_lists[default_unit] or
-          raise "Missing activity task list configuration for default unit '#{default_unit}'"
-    end
-
     def default_unit
       @default_unit ||= @config.unit.to_s
     end
