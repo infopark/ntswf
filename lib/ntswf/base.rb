@@ -12,6 +12,9 @@ module Ntswf
     # @option config [String] :domain The SWF domain name
     # @option config [Numeric] :execution_version
     #   Value allowing clients to reject future execution versions
+    # @option config [String] :execution_id_prefix
+    #   Prefix for {Client Client's} execution id (same restrictions for value)
+    #   (defaults to value of *:unit*)
     # @option config [String] :pidfile
     #   A path receiving the current PID for looping methods. Causes exit, if
     #   overwritten by another process. See {Worker#in_subprocess}
@@ -45,7 +48,7 @@ module Ntswf
     end
 
     def workflow_name
-      "#{default_unit}-workflow"
+      "#{service}-workflow"
     end
 
     def workflow_version
@@ -65,11 +68,16 @@ module Ntswf
     end
 
     def activity_task_list
-      activity_task_lists[default_unit] or raise "Missing activity task list configuration"
+      activity_task_lists[default_unit] or
+          raise "Missing activity task list configuration for default unit '#{default_unit}'"
     end
 
     def default_unit
       @default_unit ||= @config.unit.to_s
+    end
+
+    def service
+      (@config.execution_id_prefix || default_unit).to_s
     end
 
     def execution_version
@@ -104,7 +112,7 @@ module Ntswf
     protected
 
     def activity_name
-      "#{default_unit}-activity"
+      "#{service}-activity"
     end
 
     def announce(s)

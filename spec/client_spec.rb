@@ -2,13 +2,15 @@ require "ntswf"
 require "json"
 
 describe Ntswf::Client do
-  let(:config) do
+  let(:default_config) do
     {
       activity_task_lists: {"test" => "atl"},
       decision_task_list: "dtl",
       unit: "test",
     }
   end
+  let(:config) {default_config}
+
   let(:client) { Ntswf.create(:client, config) }
   before { client.stub :log }
 
@@ -47,7 +49,7 @@ describe Ntswf::Client do
       end
 
       its([:tag_list]) { should eq(["test", "the_worker"]) }
-      its([:workflow_id]) { should eq "atl;the_id" }
+      its([:workflow_id]) { should eq "test;the_id" }
 
       expected_args = [
         :child_policy,
@@ -59,6 +61,12 @@ describe Ntswf::Client do
       ]
       expected_args.each do |expected_arg|
         its([expected_arg]) { should_not be_nil }
+      end
+
+      context "when configured with a service" do
+        let(:config) {default_config.merge(execution_id_prefix: "cms")}
+
+        its([:workflow_id]) { should eq "cms;the_id" }
       end
     end
   end
