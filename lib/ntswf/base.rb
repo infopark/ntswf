@@ -10,11 +10,11 @@ module Ntswf
     #   The task list names for activities as hash (see also *:unit*)
     # @option config [String] :decision_task_list The task list name for decisions
     # @option config [String] :domain The SWF domain name
+    # @option config [String] :execution_id_prefix
+    #   (value of :unit) Workflow ID prefix
+    #   (see {Client#start_execution}'s *:execution_id* for allowed values)
     # @option config [Numeric] :execution_version
     #   Value allowing clients to reject future execution versions
-    # @option config [String] :execution_id_prefix
-    #   Prefix for {Client Client's} execution id (same restrictions for value)
-    #   (defaults to value of *:unit*)
     # @option config [String] :pidfile
     #   A path receiving the current PID for looping methods. Causes exit, if
     #   overwritten by another process. See {Worker#in_subprocess}
