@@ -56,7 +56,6 @@ module Ntswf
 
     def start_swf_workflow_execution(options)
       execution_id = options.delete(:execution_id)
-      workflow_id = [service, execution_id].join(separator)
       workflow_type.start_execution(
         child_policy: :terminate,
         execution_start_to_close_timeout: 48 * 3600,
@@ -64,8 +63,12 @@ module Ntswf
         tag_list: [options[:unit].to_s, options[:name].to_s],
         task_list: decision_task_list,
         task_start_to_close_timeout: 10 * 60,
-        workflow_id: workflow_id,
+        workflow_id: workflow_id(service, execution_id),
       )
+    end
+
+    def workflow_id(prefix, suffix)
+      [prefix, suffix].join(separator)
     end
 
     def execution_details(workflow_execution)
