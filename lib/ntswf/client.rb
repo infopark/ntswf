@@ -63,7 +63,7 @@ module Ntswf
         tag_list: [options[:unit].to_s, options[:name].to_s],
         task_list: decision_task_list,
         task_start_to_close_timeout: 10 * 60,
-        workflow_id: workflow_id(service, execution_id),
+        workflow_id: workflow_id(execution_id_prefix, execution_id),
       )
     end
 

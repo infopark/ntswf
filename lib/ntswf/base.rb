@@ -48,7 +48,7 @@ module Ntswf
     end
 
     def workflow_name
-      "#{service}-workflow"
+      "#{execution_id_prefix}-workflow"
     end
 
     def workflow_version
@@ -71,7 +71,7 @@ module Ntswf
       @default_unit ||= @config.unit.to_s
     end
 
-    def service
+    def execution_id_prefix
       (@config.execution_id_prefix || default_unit).to_s
     end
 
@@ -107,7 +107,7 @@ module Ntswf
     protected
 
     def activity_name
-      "#{service}-activity"
+      "#{execution_id_prefix}-activity"
     end
 
     def announce(s)
