@@ -18,6 +18,8 @@ module Ntswf
     #   new executions, even in case of failure
     # @option options [String] :name Identifies the kind of task for the executing unit
     # @option options [Hash] :params Custom task parameters passed on to the executing unit
+    # @option options [String] :tag_list
+    #   Additional strings that will be added to to the tag list of the workflow execution.
     # @option options [String] :unit
     #   The executing unit's key, a corresponding activity task list must be configured
     # @option options [Numeric] :version
@@ -60,7 +62,7 @@ module Ntswf
         child_policy: :terminate,
         execution_start_to_close_timeout: 48 * 3600,
         input: options.to_json,
-        tag_list: [options[:unit].to_s, options[:name].to_s],
+        tag_list: [options[:unit].to_s, options[:name].to_s] + Array(options[:tag_list]),
         task_list: decision_task_list,
         task_start_to_close_timeout: 10 * 60,
         workflow_id: workflow_id(execution_id_prefix, execution_id),
