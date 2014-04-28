@@ -4,7 +4,7 @@ Gem::Specification.new do |s|
   s.email = 'info@infopark.de'
   s.files = Dir['READ*', 'LIC*', 'lib/**/*']
   s.homepage = 'https://github.com/infopark/ntswf'
-  s.license = 'LGPLv3'
+  s.license = 'LGPL-3.0'
   s.name = 'ntswf'
   s.platform = Gem::Platform::RUBY
   s.required_ruby_version = '>= 1.9.3'

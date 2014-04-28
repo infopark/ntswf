@@ -48,4 +48,4 @@ See {Ntswf::Utils}
 
 License
 -------
-[LPGLv3](http://www.gnu.org/licenses/lgpl-3.0.html)
+[LPGL-3.0](http://www.gnu.org/licenses/lgpl-3.0.html)
