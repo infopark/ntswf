@@ -25,7 +25,7 @@ module Ntswf
     # @option options [Numeric] :version
     #   Optional minimum version of the client. The task may be rescheduled by older clients.
     # @return (see #find)
-    # @raise [AWS::SimpleWorkflow::Errors::WorkflowExecutionAlreadyStartedFault]
+    # @raise [Errors::AlreadyStarted]
     def start_execution(options)
       workflow_execution = start_swf_workflow_execution(options)
       execution_details(workflow_execution).merge!(
@@ -38,7 +38,7 @@ module Ntswf
     # @param ids [Hash] Identifies the queried execution
     # @option ids [String] :workflow_id Workflow ID
     # @option ids [String] :run_id Run ID
-    # @raise [AWS::SimpleWorkflow::Errors::UnknownResourceFault]
+    # @raise [Errors::NotFound]
     # @return [Hash]
     #   Execution properties.
     #   :exception:: Exception message for an unexpectedly failed execution

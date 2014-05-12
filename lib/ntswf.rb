@@ -18,6 +18,7 @@ module Ntswf
   )
 
   AUTOLOAD = DEFAULT_MODULES + %w(
+    Errors
     Instance
   )
 
