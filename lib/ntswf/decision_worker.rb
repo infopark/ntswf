@@ -96,7 +96,8 @@ module Ntswf
       options = parse_input(input)
       app_in_charge = options['unit'] || guess_app_from(data_providing_event)
       task_list = activity_task_lists[app_in_charge]
-      raise "Missing activity task list config for #{app_in_charge.inspect}" unless task_list
+      raise Errors::InvalidArgument.new(
+          "Missing activity task list config for #{app_in_charge.inspect}") unless task_list
 
       task.schedule_activity_task(activity_type, {
         heartbeat_timeout: :none,

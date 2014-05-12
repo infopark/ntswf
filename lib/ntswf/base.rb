@@ -24,7 +24,7 @@ module Ntswf
     #   Development option.
     #   A random ID is stored at the given path, and appended to all task list names.
     # @option config [String] :unit This worker/client's activity task list key
-    # @raise If a task list name is invalid
+    # @raise [Errors::InvalidArgument] If a task list name is invalid
     def configure(config)
       @config = OpenStruct.new(config)
       autocomplete_task_list_names!
@@ -64,7 +64,8 @@ module Ntswf
     end
 
     def decision_task_list
-      @config.decision_task_list or raise "Missing decision task list configuration"
+      @config.decision_task_list or raise Errors::InvalidArgument.new(
+          "Missing decision task list configuration")
     end
 
     def default_unit
@@ -123,10 +124,12 @@ module Ntswf
       atl_values = activity_task_lists.values if activity_task_lists
       [*atl_values, *@config.decision_task_list].each do |task_list|
         if task_list.include?(separator)
-          raise "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use."
+          raise Errors::InvalidArgument.new(
+              "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use.")
         end
         if task_list.count(". ") > 0
-          raise "Invalid config '#{task_list}': Dots and spaces not allowed."
+          raise Errors::InvalidArgument.new(
+              "Invalid config '#{task_list}': Dots and spaces not allowed.")
         end
       end
     end

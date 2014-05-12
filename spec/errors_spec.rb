@@ -1,7 +1,7 @@
 require "ntswf"
 
 describe Ntswf::Client do
-  let(:client) { Ntswf.create(:client, {}) }
+  let(:client) { Ntswf.create(:activity_worker, :client, {activity_task_lists: {}}) }
   before { client.stub :log }
 
   def exception_for
@@ -40,6 +40,27 @@ describe Ntswf::Client do
 
     describe "backwards compatibility" do
       it { should be_kind_of AWS::SimpleWorkflow::Errors::UnknownResourceFault }
+    end
+  end
+
+  describe "invalid arguments" do
+    describe "given invalid task list name" do
+      subject { exception_for { client.configure(activity_task_lists: { a: "not valid" }) } }
+      it { should be_kind_of RuntimeError }
+      it { should be_kind_of Ntswf::Errors::InvalidArgument }
+      its(:message) { should include "Invalid config" }
+    end
+
+    describe "given task list name with reserved separator" do
+      subject { exception_for { client.configure(activity_task_lists: { a: "a;b" }) } }
+      it { should be_kind_of Ntswf::Errors::InvalidArgument }
+      its(:message) { should include "reserved" }
+    end
+
+    describe "given no activity task list mapping" do
+      subject { exception_for { client.process_activity_task } }
+      it { should be_kind_of Ntswf::Errors::InvalidArgument }
+      its(:message) { should include "Missing activity task list" }
     end
   end
 end
