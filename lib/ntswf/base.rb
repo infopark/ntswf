@@ -5,7 +5,8 @@ require 'securerandom'
 module Ntswf
   module Base
     # @param config [Hash] A configuration with the following keys:
-    # @option config [String] :access_key_id AWS credential
+    # @option config [String] :access_key_id
+    #   AWS credential (deprecated, should use swf option)
     # @option config [Hash] :activity_task_lists
     #   The task list names for activities as hash (see also *:unit*)
     # @option config [String] :decision_task_list The task list name for decisions
@@ -19,7 +20,10 @@ module Ntswf
     #   A path receiving the current PID for looping methods. Causes exit, if
     #   overwritten by another process. See {Worker#in_subprocess}
     # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
-    # @option config [String] :secret_access_key AWS credential
+    # @option config [String] :secret_access_key
+    #   AWS credential (deprecated, should use swf option)
+    # @option config [AWS::SimpleWorkflow] :swf
+    #   AWS simple workflow object (created e.g. with AWS::SimpleWorkflow.new)
     # @option config [String] :task_list_suffix_file
     #   Development option.
     #   A random ID is stored at the given path, and appended to all task list names.
@@ -43,8 +47,10 @@ module Ntswf
 
     # @return [AWS::SimpleWorkflow]
     def swf
-      @swf ||= AWS::SimpleWorkflow.new(access_key_id: @config.access_key_id,
-          secret_access_key: @config.secret_access_key, use_ssl: true)
+      @swf ||= (@config.swf || AWS::SimpleWorkflow.new({
+        access_key_id: @config.access_key_id,
+        secret_access_key: @config.secret_access_key,
+      }))
     end
 
     def workflow_name
