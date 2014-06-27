@@ -18,7 +18,7 @@ module Ntswf
     #   new executions, even in case of failure
     # @option options [String] :name Identifies the kind of task for the executing unit
     # @option options [Hash] :params Custom task parameters passed on to the executing unit
-    # @option options [String] :tag_list
+    # @option options [Array<String>] :tag_list
     #   Additional strings that will be added to to the tag list of the workflow execution.
     # @option options [String] :unit
     #   The executing unit's key, a corresponding activity task list must be configured
