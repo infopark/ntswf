@@ -54,11 +54,15 @@ module Ntswf
     end
 
     def workflow_name
-      "#{execution_id_prefix}-workflow"
+      "master-workflow"
     end
 
     def workflow_version
       "v1"
+    end
+
+    def activity_name
+      "master-activity"
     end
 
     def domain
@@ -112,10 +116,6 @@ module Ntswf
     end
 
     protected
-
-    def activity_name
-      "#{execution_id_prefix}-activity"
-    end
 
     def announce(s)
       $0 = s

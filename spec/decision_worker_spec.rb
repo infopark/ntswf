@@ -22,7 +22,7 @@ describe Ntswf::DecisionWorker do
   let(:events) { [event] }
   let(:task) { double("Task", new_events: [event], events: events).as_null_object }
 
-  before { worker.stub(announce: nil, log: nil, activity_type: "test_activity") }
+  before { worker.stub(announce: nil, log: nil) }
 
   describe "processing a decision task" do
     it "should only query for the configured task list" do
@@ -86,7 +86,7 @@ describe Ntswf::DecisionWorker do
         let(:event_type) {"WorkflowExecutionStarted"}
 
         it "should schedule an activity task avoiding defaults" do
-          task.should_receive(:schedule_activity_task).with("test_activity", hash_including(
+          task.should_receive(:schedule_activity_task).with(anything, hash_including(
             heartbeat_timeout: :none,
             input: anything,
             schedule_to_close_timeout: anything,
@@ -97,11 +97,19 @@ describe Ntswf::DecisionWorker do
           worker.process_decision_task
         end
 
+        it "should use the master activity type" do
+          expect(task).to receive(:schedule_activity_task).with { |activity_type|
+            expect(activity_type.name).to eq "master-activity"
+            expect(activity_type.version).to eq "v1"
+          }
+          worker.process_decision_task
+        end
+
         context "given no app in charge" do
           let(:input) { ["legacy_stuff", {}].to_json }
 
           it "should schedule an activity task for a guessed task list" do
-            task.should_receive(:schedule_activity_task).with("test_activity", hash_including(
+            task.should_receive(:schedule_activity_task).with(anything, hash_including(
                 task_list: "atl"))
             worker.process_decision_task
           end
@@ -134,7 +142,7 @@ describe Ntswf::DecisionWorker do
           end
 
           it "should re-schedule the task" do
-            task.should_receive(:schedule_activity_task).with("test_activity", hash_including(
+            task.should_receive(:schedule_activity_task).with(anything, hash_including(
               heartbeat_timeout: :none,
               input: input,
               schedule_to_close_timeout: anything,
@@ -199,7 +207,7 @@ describe Ntswf::DecisionWorker do
 
         context "given no interval" do
           it "should re-schedule, assuming seconds_until_retry was set" do
-            task.should_receive(:schedule_activity_task).with("test_activity", hash_including(
+            task.should_receive(:schedule_activity_task).with(anything, hash_including(
               heartbeat_timeout: :none,
               input: input,
               schedule_to_close_timeout: anything,
