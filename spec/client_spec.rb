@@ -20,6 +20,14 @@ describe Ntswf::Client do
     before { AWS::SimpleWorkflow::WorkflowType.any_instance.stub(start_execution: execution) }
     before { AWS::SimpleWorkflow::WorkflowExecution.any_instance.stub(status: :open) }
 
+    it "should use the master workflow type" do
+      workflow_type = double.as_null_object
+      expect(AWS::SimpleWorkflow::WorkflowType).to receive(:new).
+          with(anything, 'master-workflow', 'v1').and_return workflow_type
+      client.start_execution({})
+      expect(workflow_type).to have_received :start_execution
+    end
+
     describe "returned values" do
       before { AWS::SimpleWorkflow::WorkflowType.any_instance.should_receive(:start_execution) }
 
