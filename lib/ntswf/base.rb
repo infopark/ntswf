@@ -16,17 +16,17 @@ module Ntswf
     #   (see {Client#start_execution}'s *:execution_id* for allowed values)
     # @option config [Numeric] :execution_version
     #   Value allowing clients to reject future execution versions
+    # @option config [String] :isolation_file
+    #   Development/test option.
+    #   A random ID is stored at the given path, and prepended to task list names and execution IDs.
     # @option config [String] :pidfile
     #   A path receiving the current PID for looping methods. Causes exit, if
     #   overwritten by another process. See {Worker#in_subprocess}
-    # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
     # @option config [String] :secret_access_key
     #   AWS credential (deprecated, should use swf option)
+    # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
     # @option config [AWS::SimpleWorkflow] :swf
     #   AWS simple workflow object (created e.g. with AWS::SimpleWorkflow.new)
-    # @option config [String] :task_list_suffix_file
-    #   Development option.
-    #   A random ID is stored at the given path, and appended to all task list names.
     # @option config [String] :unit This worker/client's activity task list key
     # @raise [Errors::InvalidArgument] If a task list name is invalid
     def configure(config)
@@ -83,7 +83,7 @@ module Ntswf
     end
 
     def execution_id_prefix
-      (@config.execution_id_prefix || default_unit).to_s
+      "#{isolation_id}#{@config.execution_id_prefix || default_unit}"
     end
 
     def execution_version
@@ -151,14 +151,14 @@ module Ntswf
 
     def autocomplete(value, fallback)
       value = fallback unless value.kind_of? String
-      "#{value}#{task_list_suffix}"
+      "#{isolation_id}#{value}"
     end
 
-    def task_list_suffix
-      file = @config.task_list_suffix_file
+    def isolation_id
+      file = @config.isolation_file || @config.task_list_suffix_file
       return "" unless file
       File.write(file, SecureRandom.hex(9)) unless File.exist?(file)
-      @suffix ||= File.read(file)
+      @isolation_id ||= File.read(file)
     end
   end
 end
