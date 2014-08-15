@@ -57,7 +57,7 @@ module Ntswf
 
     private
 
-    def poll(&block)
+    def poll(task_collection, task_list_name, &block)
       args = [task_list_name]
       if @config.identity_suffix
         args << {identity: "#{Socket.gethostname}:#{Process.pid}:#{@config.identity_suffix}"}
