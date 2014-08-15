@@ -54,5 +54,15 @@ module Ntswf
     def create_pidfile
       IO.write(@config.pidfile, Process.pid)
     end
+
+    private
+
+    def poll(&block)
+      args = [task_list_name]
+      if @config.identity_suffix
+        args << {identity: "#{Socket.gethostname}:#{Process.pid}:#{@config.identity_suffix}"}
+      end
+      task_collection.poll_for_single_task(*args, &block)
+    end
   end
 end

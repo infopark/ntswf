@@ -39,7 +39,7 @@ module Ntswf
 
     def process_activity_task
       announce("polling for activity task #{activity_task_list}")
-      domain.activity_tasks.poll_for_single_task(activity_task_list) do |activity_task|
+      poll do |activity_task|
         announce("got activity task #{activity_task.activity_type.inspect} #{activity_task.input}")
         process_single_task activity_task
       end
@@ -91,6 +91,14 @@ module Ntswf
       when :outcome, :seconds_until_retry
         activity_task.complete!(result: returned_hash.to_json)
       end
+    end
+
+    def task_collection
+      domain.activity_tasks
+    end
+
+    def task_list_name
+      activity_task_list
     end
   end
 end

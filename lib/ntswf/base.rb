@@ -16,6 +16,10 @@ module Ntswf
     #   (see {Client#start_execution}'s *:execution_id* for allowed values)
     # @option config [Numeric] :execution_version
     #   Value allowing clients to reject future execution versions
+    # @option config [String] :identity_suffix
+    #   When polling for a task, the suffix will be appended to the (default) identity
+    #   (<hostname>:<pid>), delimited by a ":".
+    #   Allows to distinguish worker activity on different hosts with identical hostnames.
     # @option config [String] :isolation_file
     #   Development/test option.
     #   A random ID is stored at the given path, and prepended to task list names and execution IDs.

@@ -18,8 +18,8 @@ module Ntswf
     # Result keys
     # :seconds_until_retry:: See {ActivityWorker#on_activity}
     def process_decision_task
-      announce("polling for decision task #{decision_task_list}")
-      domain.decision_tasks.poll_for_single_task(decision_task_list) do |task|
+      announce("polling for decision task #{task_list_name}")
+      poll do |task|
         announce("got decision task #{task.workflow_execution.inspect}")
         begin
           task.new_events.each { |event| process_decision_event(task, event) }
@@ -130,6 +130,14 @@ module Ntswf
     # transitional, until all apps speak the input options protocol
     def guess_app_from(data_providing_event)
       data_providing_event.workflow_execution.workflow_type.name[/\w+/]
+    end
+
+    def task_collection
+      domain.decision_tasks
+    end
+
+    def task_list_name
+      decision_task_list
     end
   end
 end
