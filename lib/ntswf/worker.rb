@@ -57,12 +57,13 @@ module Ntswf
 
     private
 
-    def poll(task_collection, task_list_name, &block)
-      args = [task_list_name]
+    def poll_options
+      options = {}
       if @config.identity_suffix
-        args << {identity: "#{Socket.gethostname}:#{Process.pid}:#{@config.identity_suffix}"}
+        options[:identity] = "#{Socket.gethostname}:#{Process.pid}:#{@config.identity_suffix}"
       end
-      task_collection.poll_for_single_task(*args, &block)
+      options
     end
+
   end
 end

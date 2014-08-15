@@ -28,7 +28,7 @@ describe Ntswf::DecisionWorker do
   describe "processing a decision task" do
     it "should only query for the configured task list" do
       AWS::SimpleWorkflow::DecisionTaskCollection.any_instance.
-          should_receive(:poll_for_single_task).with("dtl")
+          should_receive(:poll_for_single_task).with("dtl", {})
       worker.process_decision_task
     end
 
