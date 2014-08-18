@@ -39,9 +39,9 @@ module Ntswf
 
     def process_activity_task
       announce("polling for activity task #{activity_task_list}")
-      domain.activity_tasks.poll_for_single_task(activity_task_list) do |activity_task|
-        announce("got activity task #{activity_task.activity_type.inspect} #{activity_task.input}")
-        process_single_task activity_task
+      domain.activity_tasks.poll_for_single_task(activity_task_list, poll_options) do |task|
+        announce("got activity task #{task.activity_type.inspect} #{task.input}")
+        process_single_task(task)
       end
     end
 

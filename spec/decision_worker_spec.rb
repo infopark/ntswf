@@ -5,7 +5,8 @@ describe Ntswf::DecisionWorker do
   let(:atl_config) { { "test" => "atl" } }
   let(:dtl_config) { "dtl" }
   let(:unit) { "testt" }
-  let(:config) { { unit: unit, decision_task_list: dtl_config, activity_task_lists: atl_config } }
+  let(:default_config) { { unit: unit, decision_task_list: dtl_config, activity_task_lists: atl_config } }
+  let(:config) { default_config }
   let(:worker) { Ntswf.create(:decision_worker, config) }
 
   let(:options) { {} }
@@ -27,8 +28,20 @@ describe Ntswf::DecisionWorker do
   describe "processing a decision task" do
     it "should only query for the configured task list" do
       AWS::SimpleWorkflow::DecisionTaskCollection.any_instance.
-          should_receive(:poll_for_single_task).with("dtl")
+          should_receive(:poll_for_single_task).with("dtl", {})
       worker.process_decision_task
+    end
+
+    context "having an identify_suffix configured" do
+      let(:config) {default_config.merge("identity_suffix" => "id_suff")}
+
+      it "passes the identity to SWF" do
+        expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+            to receive(:poll_for_single_task).
+            with(anything, identity: "#{Socket.gethostname}:#{Process.pid}:id_suff")
+
+        worker.process_decision_task
+      end
     end
 
     describe "handling event" do

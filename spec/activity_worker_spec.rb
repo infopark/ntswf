@@ -2,7 +2,8 @@ require "ntswf"
 require "json"
 
 describe Ntswf::ActivityWorker do
-  let(:config) { { unit: "test", activity_task_lists: { "test" => "task_list" } } }
+  let(:default_config) { { unit: "test", activity_task_lists: { "test" => "task_list" } } }
+  let(:config) { default_config }
   let(:worker) { Ntswf.create(:activity_worker, config) }
   let(:input) { "{}" }
   let(:activity_task) { double activity_type: nil, input: input, workflow_execution: execution }
@@ -37,6 +38,18 @@ describe Ntswf::ActivityWorker do
       context "as block" do
         before { worker.on_activity { test_result << "Block" } }
         it { should eq "Block" }
+      end
+    end
+
+    context "having an identify_suffix configured" do
+      let(:config) {default_config.merge("identity_suffix" => "id_suff")}
+
+      it "passes the identity to SWF" do
+        expect_any_instance_of(AWS::SimpleWorkflow::ActivityTaskCollection).
+            to receive(:poll_for_single_task).
+            with(anything, identity: "#{Socket.gethostname}:#{Process.pid}:id_suff")
+
+        worker.process_activity_task
       end
     end
 

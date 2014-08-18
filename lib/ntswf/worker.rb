@@ -54,5 +54,16 @@ module Ntswf
     def create_pidfile
       IO.write(@config.pidfile, Process.pid)
     end
+
+    private
+
+    def poll_options
+      options = {}
+      if @config.identity_suffix
+        options[:identity] = "#{Socket.gethostname}:#{Process.pid}:#{@config.identity_suffix}"
+      end
+      options
+    end
+
   end
 end

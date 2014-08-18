@@ -19,7 +19,7 @@ module Ntswf
     # :seconds_until_retry:: See {ActivityWorker#on_activity}
     def process_decision_task
       announce("polling for decision task #{decision_task_list}")
-      domain.decision_tasks.poll_for_single_task(decision_task_list) do |task|
+      domain.decision_tasks.poll_for_single_task(decision_task_list, poll_options) do |task|
         announce("got decision task #{task.workflow_execution.inspect}")
         begin
           task.new_events.each { |event| process_decision_event(task, event) }
