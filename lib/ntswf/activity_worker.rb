@@ -53,8 +53,8 @@ module Ntswf
     end
 
     def process_single_task(activity_task)
-      returned_hash = @task_callback.call(describe(activity_task)) if @task_callback
-      process_returned_hash(activity_task, returned_hash)
+      result = @task_callback.call(describe(activity_task)) if @task_callback
+      process_result(activity_task, result)
     rescue => exception
       fail_with_exception(activity_task, exception)
     end
@@ -79,17 +79,18 @@ module Ntswf
       options.map { |k, v| {k.to_sym => v} }.reduce(&:merge!)
     end
 
-    KNOWN_RETURN_KEYS = [:error, :outcome, :seconds_until_retry]
 
-    def process_returned_hash(activity_task, returned_hash)
-      return unless returned_hash.kind_of? Hash
-      kind, value = returned_hash.detect { |k, v| KNOWN_RETURN_KEYS.include? k }
-      case kind
-      when :error
-        reason = returned_hash[:seconds_until_retry] ? "Retry" : "Error"
-        activity_task.fail!(details: {error: value.to_s[0, 1000]}.to_json, reason: reason)
-      when :outcome, :seconds_until_retry
-        activity_task.complete!(result: returned_hash.to_json)
+    def process_result(activity_task, result)
+      result ||= {}
+      raise "task callback returned #{result.class} instead of Hash" unless Hash === result
+      if result.include?(:error)
+        reason = result[:seconds_until_retry] ? "Retry" : "Error"
+        activity_task.fail!(
+          details: {error: result[:error].to_s[0, 1000]}.to_json,
+          reason: reason
+        )
+      else
+        activity_task.complete!(result: result.to_json)
       end
     end
   end

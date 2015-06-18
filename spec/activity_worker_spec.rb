@@ -6,7 +6,10 @@ describe Ntswf::ActivityWorker do
   let(:config) { default_config }
   let(:worker) { Ntswf.create(:activity_worker, config) }
   let(:input) { "{}" }
-  let(:activity_task) { double activity_type: nil, input: input, workflow_execution: execution }
+  let(:activity_task) do
+    instance_double(AWS::SimpleWorkflow::ActivityTask,
+        activity_type: nil, input: input, workflow_execution: execution, complete!: nil, fail!: nil)
+  end
   let(:execution) { AWS::SimpleWorkflow::WorkflowExecution.new("test", "workflow_id", "run_id") }
 
   let(:test_result) { [] }
@@ -134,6 +137,30 @@ describe Ntswf::ActivityWorker do
           subject { JSON.parse(test_result.first[:details])["error"] }
           its(:size) { should be <= 32700 }
           its(:size) { should be >= 1000 }
+        end
+      end
+
+      context "given “nil”" do
+        let(:returned) { nil }
+
+        it "completes the task" do
+          expect(activity_task).to receive(:complete!).with(result: "{}")
+          worker.process_activity_task
+        end
+      end
+
+      context "given other things than Hash or “nil”" do
+        let(:returned) { "other stuff" }
+
+        it "fails the task" do
+          expect(activity_task).to receive(:fail!) do |params|
+            expect(JSON.parse(params[:details])).to eq(
+              "error" => "task callback returned String instead of Hash",
+              "exception" => "RuntimeError",
+            )
+            expect(params[:reason]).to eq("Exception")
+          end
+          worker.process_activity_task
         end
       end
     end
