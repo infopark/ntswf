@@ -6,7 +6,7 @@ describe Ntswf::Worker do
   let(:worker) { Ntswf.create(:worker, config) }
 
   before do
-    worker.stub(announce: nil, log: nil)
+    allow(worker).to receive_messages(announce: nil, log: nil)
     worker.instance_exec do
       @rd, @wr = IO.pipe
 
@@ -41,7 +41,7 @@ describe Ntswf::Worker do
   end
 
   describe "retry" do
-    before { worker.stub(exit!: nil, fork: nil) }
+    before { allow(worker).to receive_messages(exit!: nil, fork: nil) }
 
     let(:exception) do
       begin
@@ -59,7 +59,7 @@ describe Ntswf::Worker do
 
     context "no retries" do
       subject { output }
-      it { should eq "0" }
+      it { is_expected.to eq "0" }
 
       describe "exception" do
         subject { exception }
@@ -70,7 +70,7 @@ describe Ntswf::Worker do
     context "single retry" do
       let(:config) { {subprocess_retries: 1} }
       subject { output }
-      it { should eq "01" }
+      it { is_expected.to eq "01" }
 
       describe "exception" do
         subject { exception }
@@ -83,13 +83,13 @@ describe Ntswf::Worker do
 
       describe "calls" do
         subject { output }
-        before { worker.should_receive :exit! }
-        it { should eq "012done" }
+        before { expect(worker).to receive :exit! }
+        it { is_expected.to eq "012done" }
       end
 
       describe "exception" do
         subject { exception }
-        it { should be_nil }
+        it { is_expected.to be_nil }
       end
     end
   end
