@@ -23,12 +23,12 @@ describe Ntswf::DecisionWorker do
   let(:events) { [event] }
   let(:task) { double("Task", new_events: [event], events: events).as_null_object }
 
-  before { worker.stub(announce: nil, log: nil) }
+  before { allow(worker).to receive_messages(announce: nil, log: nil) }
 
   describe "processing a decision task" do
     it "should only query for the configured task list" do
-      AWS::SimpleWorkflow::DecisionTaskCollection.any_instance.
-          should_receive(:poll_for_single_task).with("dtl", {})
+      expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+          to receive(:poll_for_single_task).with("dtl", {})
       worker.process_decision_task
     end
 
@@ -46,7 +46,7 @@ describe Ntswf::DecisionWorker do
 
     describe "handling event" do
       before do
-        AWS::SimpleWorkflow::DecisionTaskCollection.any_instance.stub(
+        allow_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).to receive(
             :poll_for_single_task).and_yield(task)
       end
 
@@ -54,12 +54,12 @@ describe Ntswf::DecisionWorker do
         let(:event_type) {"ActivityTaskTimedOut"}
 
         it "should cancel the execution" do
-          task.should_receive :cancel_workflow_execution
+          expect(task).to receive :cancel_workflow_execution
           worker.process_decision_task
         end
 
         it "should notify" do
-          worker.should_receive :notify
+          expect(worker).to receive :notify
           worker.process_decision_task
         end
       end
@@ -71,7 +71,7 @@ describe Ntswf::DecisionWorker do
           let(:result) { {seconds_until_retry: 321}.to_json }
 
           it "schedules a timer event" do
-            task.should_receive(:start_timer).with(321, anything)
+            expect(task).to receive(:start_timer).with(321, anything)
             worker.process_decision_task
           end
         end
@@ -80,7 +80,7 @@ describe Ntswf::DecisionWorker do
           let(:result) { {seconds_until_restart: "321"}.to_json }
 
           it "schedules a timer event" do
-            task.should_receive(:start_timer).with(321, control: result)
+            expect(task).to receive(:start_timer).with(321, control: result)
             worker.process_decision_task
           end
         end
@@ -89,7 +89,7 @@ describe Ntswf::DecisionWorker do
           let(:result) { {outcome: "some_data"}.to_json }
 
           it "schedules a workflow completed event" do
-            task.should_receive(:complete_workflow_execution).with(result: result)
+            expect(task).to receive(:complete_workflow_execution).with(result: result)
             worker.process_decision_task
           end
         end
@@ -99,7 +99,7 @@ describe Ntswf::DecisionWorker do
         let(:event_type) {"WorkflowExecutionStarted"}
 
         it "should schedule an activity task avoiding defaults" do
-          task.should_receive(:schedule_activity_task).with(anything, hash_including(
+          expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
             heartbeat_timeout: :none,
             input: anything,
             schedule_to_close_timeout: anything,
@@ -122,7 +122,7 @@ describe Ntswf::DecisionWorker do
           let(:input) { ["legacy_stuff", {}].to_json }
 
           it "should schedule an activity task for a guessed task list" do
-            task.should_receive(:schedule_activity_task).with(anything, hash_including(
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
                 task_list: "atl"))
             worker.process_decision_task
           end
@@ -136,12 +136,12 @@ describe Ntswf::DecisionWorker do
           let(:reason) { "Error" }
 
           it "should fail" do
-            task.should_receive(:fail_workflow_execution)
+            expect(task).to receive(:fail_workflow_execution)
             worker.process_decision_task
           end
 
           it "should not re-schedule the task" do
-            task.should_not_receive(:schedule_activity_task)
+            expect(task).not_to receive(:schedule_activity_task)
             worker.process_decision_task
           end
         end
@@ -150,12 +150,12 @@ describe Ntswf::DecisionWorker do
           let(:reason) { "Retry" }
 
           it "should not fail" do
-            task.should_not_receive(:fail_workflow_execution)
+            expect(task).not_to receive(:fail_workflow_execution)
             worker.process_decision_task
           end
 
           it "should re-schedule the task" do
-            task.should_receive(:schedule_activity_task).with(anything, hash_including(
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
               heartbeat_timeout: :none,
               input: input,
               schedule_to_close_timeout: anything,
@@ -192,7 +192,7 @@ describe Ntswf::DecisionWorker do
           let(:options) { {interval: 1234} }
 
           it "should continue with mandatory attributes" do
-            task.should_receive(:continue_as_new_workflow_execution).with(hash_including(
+            expect(task).to receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
             worker.process_decision_task
           end
@@ -203,7 +203,7 @@ describe Ntswf::DecisionWorker do
           let(:started_attributes_hash) { {control: control} }
 
           it "should continue as new" do
-            task.should_receive(:continue_as_new_workflow_execution).with(hash_including(
+            expect(task).to receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
             worker.process_decision_task
           end
@@ -212,7 +212,7 @@ describe Ntswf::DecisionWorker do
             let(:control) { {perform_again: 9}.to_json }
 
             it "should continue as new" do
-              task.should_receive(:continue_as_new_workflow_execution)
+              expect(task).to receive(:continue_as_new_workflow_execution)
               worker.process_decision_task
             end
           end
@@ -220,7 +220,7 @@ describe Ntswf::DecisionWorker do
 
         context "given no interval" do
           it "should re-schedule, assuming seconds_until_retry was set" do
-            task.should_receive(:schedule_activity_task).with(anything, hash_including(
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
               heartbeat_timeout: :none,
               input: input,
               schedule_to_close_timeout: anything,
@@ -247,7 +247,7 @@ describe Ntswf::DecisionWorker do
             let(:event_type) { event }
 
             it "should start a timer" do
-              task.should_receive(:start_timer).with(1234, anything)
+              expect(task).to receive(:start_timer).with(1234, anything)
               worker.process_decision_task
             end
           end
@@ -258,7 +258,7 @@ describe Ntswf::DecisionWorker do
           let(:input) { ["interval", {}].to_json }
 
           it "should not be interpreted" do
-            task.should_not_receive :start_timer
+            expect(task).not_to receive :start_timer
             worker.process_decision_task
           end
         end
@@ -268,8 +268,8 @@ describe Ntswf::DecisionWorker do
 
   describe "decision loop" do
     it "should loop processing tasks in subprocesses" do
-      worker.should_receive(:in_subprocess).with(:process_decision_task).exactly(9).times
-      worker.should_receive(:in_subprocess).with(:process_decision_task).ordered.and_raise "break"
+      expect(worker).to receive(:in_subprocess).with(:process_decision_task).exactly(9).times
+      expect(worker).to receive(:in_subprocess).with(:process_decision_task).ordered.and_raise "break"
       worker.process_decisions rescue nil
     end
   end
