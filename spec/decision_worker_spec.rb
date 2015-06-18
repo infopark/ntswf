@@ -111,7 +111,7 @@ describe Ntswf::DecisionWorker do
         end
 
         it "should use the master activity type" do
-          expect(task).to receive(:schedule_activity_task).with { |activity_type|
+          expect(task).to receive(:schedule_activity_task) {|activity_type|
             expect(activity_type.name).to eq "master-activity"
             expect(activity_type.version).to eq "v1"
           }

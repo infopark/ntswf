@@ -75,7 +75,7 @@ describe Ntswf::ActivityWorker do
       context "given an error" do
         let(:message) { "error message" }
         let(:returned) { {error: message} }
-        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { activity_task.should_receive(:fail!) {|args| test_result << args } }
         before { worker.process_activity_task }
 
         describe "report to SWF" do
@@ -100,7 +100,7 @@ describe Ntswf::ActivityWorker do
 
       context "given an error with immediate retry" do
         let(:returned) { {error: "try again", seconds_until_retry: 0} }
-        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { activity_task.should_receive(:fail!) {|args| test_result << args } }
         before { worker.process_activity_task }
 
         describe "report to SWF" do
@@ -120,7 +120,7 @@ describe Ntswf::ActivityWorker do
       context "given an exception" do
         let(:message) { "an exception" }
         let(:callback) { ->(task) { raise message } }
-        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { activity_task.should_receive(:fail!) {|args| test_result << args } }
         before { worker.process_activity_task }
 
         describe "report to SWF" do
