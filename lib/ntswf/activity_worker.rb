@@ -84,7 +84,7 @@ module Ntswf
       result ||= {}
       raise "task callback returned #{result.class} instead of Hash" unless Hash === result
       if result.include?(:error)
-        reason = result[:seconds_until_retry] ? "Retry" : "Error"
+        reason = result[:seconds_until_retry] ? RETRY : "Error"
         activity_task.fail!(
           details: {error: result[:error].to_s[0, 1000]}.to_json,
           reason: reason
