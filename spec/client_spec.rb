@@ -195,4 +195,34 @@ describe Ntswf::Client do
       end
     end
   end
+
+  describe "#active?" do
+    let(:workflow_id) { "flow_id" }
+    let(:executions) { instance_double(AWS::SimpleWorkflow::WorkflowExecutionCollection) }
+
+    subject { client.active?(workflow_id) }
+
+    before do
+      allow(client.domain).to receive(:workflow_executions).and_return(executions)
+      allow(executions).to receive(:with_workflow_id).with(workflow_id) do
+        allow(executions).to receive(:with_status).with(:open) do
+          allow(executions).to receive(:first).and_return(execution)
+          executions
+        end
+        executions
+      end
+    end
+
+    context "when an execution of the workflow is active" do
+      let(:execution) { instance_double(AWS::SimpleWorkflow::WorkflowExecution) }
+
+      it { is_expected.to be true }
+    end
+
+    context "when no execution of the workflow is active" do
+      let(:execution) { nil }
+
+      it { is_expected.to be false }
+    end
+  end
 end

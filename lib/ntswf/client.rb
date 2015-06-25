@@ -54,6 +54,13 @@ module Ntswf
       history_details(workflow_execution)
     end
 
+    # Gather if given workflow has an active execution.
+    # @param workflow_id [String] Identifies the queried execution.
+      # @return [Boolean] +true+ if workflow has an active execution, +false+ otherwise.
+    def active?(workflow_id)
+      domain.workflow_executions.with_workflow_id(workflow_id).with_status(:open).first != nil
+    end
+
     protected
 
     def start_swf_workflow_execution(options)
