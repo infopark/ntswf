@@ -11,8 +11,8 @@ Gem::Specification.new do |s|
   s.summary = 'Not That Simple Workflow'
   s.version = '2.3.0'
 
-  s.add_runtime_dependency 'aws-sdk-v1'
+  s.add_runtime_dependency 'aws-sdk-v1', '~> 1.64'
 
   s.add_development_dependency 'rspec', '~> 3.3'
-  s.add_development_dependency 'rspec-its'
+  s.add_development_dependency 'rspec-its', '~> 1.2'
 end
