@@ -14,12 +14,12 @@ describe Ntswf::Base do
 
       context "as lambda" do
         before { base.on_notify ->(error) { test_result << "Lambda" } }
-        it { should eq "Lambda" }
+        it { is_expected.to eq "Lambda" }
       end
 
       context "as block" do
         before { base.on_notify { test_result << "Block" } }
-        it { should eq "Block" }
+        it { is_expected.to eq "Block" }
       end
 
       context "as method" do
@@ -28,7 +28,7 @@ describe Ntswf::Base do
         end
 
         before { base.on_notify method :test_method }
-        it { should eq "Method" }
+        it { is_expected.to eq "Method" }
       end
     end
 

@@ -6,21 +6,24 @@ describe Ntswf::ActivityWorker do
   let(:config) { default_config }
   let(:worker) { Ntswf.create(:activity_worker, config) }
   let(:input) { "{}" }
-  let(:activity_task) { double activity_type: nil, input: input, workflow_execution: execution }
+  let(:activity_task) do
+    instance_double(AWS::SimpleWorkflow::ActivityTask,
+        activity_type: nil, input: input, workflow_execution: execution, complete!: nil, fail!: nil)
+  end
   let(:execution) { AWS::SimpleWorkflow::WorkflowExecution.new("test", "workflow_id", "run_id") }
 
   let(:test_result) { [] }
 
-  before { worker.stub(announce: nil, log: nil) }
+  before { allow(worker).to receive_messages(announce: nil, log: nil) }
 
   describe "processing an activity task" do
     before do
-      AWS::SimpleWorkflow::ActivityTaskCollection.any_instance.stub(:poll_for_single_task).
+      allow_any_instance_of(AWS::SimpleWorkflow::ActivityTaskCollection).to receive(:poll_for_single_task).
           and_yield activity_task
     end
 
     context "given foreign activity type" do
-      before { activity_task.stub activity_type: :some_random_thing }
+      before { allow(activity_task).to receive_messages activity_type: :some_random_thing }
       specify { expect { worker.process_activity_task }.to_not raise_error }
     end
 
@@ -32,12 +35,12 @@ describe Ntswf::ActivityWorker do
 
       context "as lambda" do
         before { worker.on_activity ->(task) { test_result << "Lambda" } }
-        it { should eq "Lambda" }
+        it { is_expected.to eq "Lambda" }
       end
 
       context "as block" do
         before { worker.on_activity { test_result << "Block" } }
-        it { should eq "Block" }
+        it { is_expected.to eq "Block" }
       end
     end
 
@@ -75,7 +78,7 @@ describe Ntswf::ActivityWorker do
       context "given an error" do
         let(:message) { "error message" }
         let(:returned) { {error: message} }
-        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { expect(activity_task).to receive(:fail!) {|args| test_result << args } }
         before { worker.process_activity_task }
 
         describe "report to SWF" do
@@ -94,13 +97,13 @@ describe Ntswf::ActivityWorker do
 
       context "given a retry" do
         let(:returned) { {seconds_until_retry: 45} }
-        before { activity_task.should_receive(:complete!).with(result: returned.to_json) }
+        before { expect(activity_task).to receive(:complete!).with(result: returned.to_json) }
         specify { worker.process_activity_task }
       end
 
       context "given an error with immediate retry" do
         let(:returned) { {error: "try again", seconds_until_retry: 0} }
-        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { expect(activity_task).to receive(:fail!) {|args| test_result << args } }
         before { worker.process_activity_task }
 
         describe "report to SWF" do
@@ -113,14 +116,14 @@ describe Ntswf::ActivityWorker do
       context "given an outcome" do
         let(:outcome) { {is: "ok"} }
         let(:returned) { {outcome: outcome} }
-        before { activity_task.should_receive(:complete!).with(result: returned.to_json) }
+        before { expect(activity_task).to receive(:complete!).with(result: returned.to_json) }
         specify { worker.process_activity_task }
       end
 
       context "given an exception" do
         let(:message) { "an exception" }
         let(:callback) { ->(task) { raise message } }
-        before { activity_task.should_receive(:fail!).with { |args| test_result << args } }
+        before { expect(activity_task).to receive(:fail!) {|args| test_result << args } }
         before { worker.process_activity_task }
 
         describe "report to SWF" do
@@ -136,13 +139,37 @@ describe Ntswf::ActivityWorker do
           its(:size) { should be >= 1000 }
         end
       end
+
+      context "given “nil”" do
+        let(:returned) { nil }
+
+        it "completes the task" do
+          expect(activity_task).to receive(:complete!).with(result: "{}")
+          worker.process_activity_task
+        end
+      end
+
+      context "given other things than Hash or “nil”" do
+        let(:returned) { "other stuff" }
+
+        it "fails the task" do
+          expect(activity_task).to receive(:fail!) do |params|
+            expect(JSON.parse(params[:details])).to eq(
+              "error" => "task callback returned String instead of Hash",
+              "exception" => "RuntimeError",
+            )
+            expect(params[:reason]).to eq("Exception")
+          end
+          worker.process_activity_task
+        end
+      end
     end
   end
 
   describe "activity loop" do
     it "should loop processing tasks in subprocesses" do
-      worker.should_receive(:in_subprocess).with(:process_activity_task).exactly(9).times
-      worker.should_receive(:in_subprocess).with(:process_activity_task).ordered.and_raise "break"
+      expect(worker).to receive(:in_subprocess).with(:process_activity_task).exactly(9).times
+      expect(worker).to receive(:in_subprocess).with(:process_activity_task).ordered.and_raise "break"
       worker.process_activities rescue nil
     end
   end

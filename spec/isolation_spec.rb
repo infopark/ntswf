@@ -22,35 +22,35 @@ describe "Isolation" do
   let!(:ntswf) { Ntswf.create(config) }
 
   subject { stored_value }
-  it { should match(/\h{18}/) }
+  it { is_expected.to match(/\h{18}/) }
 
   describe "for activity task list" do
     subject { ntswf.activity_task_lists["primary"] }
-    it { should start_with stored_value }
-    it { should end_with "primary-atl" }
+    it { is_expected.to start_with stored_value }
+    it { is_expected.to end_with "primary-atl" }
   end
 
   describe "for other activity task lists" do
     subject { ntswf.activity_task_lists["another"] }
-    it { should start_with stored_value }
-    it { should end_with "another-atl" }
+    it { is_expected.to start_with stored_value }
+    it { is_expected.to end_with "another-atl" }
   end
 
   describe "for decision task list" do
     subject { ntswf.decision_task_list }
-    it { should end_with "test" }
-    it { should start_with stored_value }
+    it { is_expected.to end_with "test" }
+    it { is_expected.to start_with stored_value }
   end
 
   describe "for same task lists" do
     subject { ntswf.activity_task_lists["same_as_dtl"] }
-    it { should eq ntswf.decision_task_list }
+    it { is_expected.to eq ntswf.decision_task_list }
   end
 
   describe "for execution ID prefixes" do
     subject { ntswf.execution_id_prefix }
-    it { should start_with stored_value }
-    it { should end_with "executionidprefix" }
+    it { is_expected.to start_with stored_value }
+    it { is_expected.to end_with "executionidprefix" }
   end
 
   describe "ignored if not configured" do

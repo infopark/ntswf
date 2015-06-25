@@ -5,7 +5,7 @@ describe Ntswf::Utils do
 
   describe "registering the workflow type" do
     it "should configure minimal defaults" do
-      AWS::SimpleWorkflow::WorkflowTypeCollection.any_instance.should_receive(:register).with(
+      expect_any_instance_of(AWS::SimpleWorkflow::WorkflowTypeCollection).to receive(:register).with(
           "master-workflow", "v1")
       utils.register_workflow_type
     end
@@ -13,7 +13,7 @@ describe Ntswf::Utils do
 
   describe "registering the activity type" do
     it "should configure minimal defaults" do
-      AWS::SimpleWorkflow::ActivityTypeCollection.any_instance.should_receive(:register).with(
+      expect_any_instance_of(AWS::SimpleWorkflow::ActivityTypeCollection).to receive(:register).with(
           "master-activity", "v1")
       utils.register_activity_type
     end
