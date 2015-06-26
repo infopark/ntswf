@@ -9,9 +9,10 @@ Gem::Specification.new do |s|
   s.platform = Gem::Platform::RUBY
   s.required_ruby_version = '>= 1.9.3'
   s.summary = 'Not That Simple Workflow'
-  s.version = '2.2.0'
+  s.version = '2.2.1'
 
-  s.add_runtime_dependency 'aws-sdk-v1'
+  s.add_runtime_dependency 'aws-sdk-v1', '~> 1.64'
 
-  s.add_development_dependency 'rspec', '~> 2.14'
+  s.add_development_dependency 'rspec', '~> 3.3'
+  s.add_development_dependency 'rspec-its', '~> 1.2'
 end

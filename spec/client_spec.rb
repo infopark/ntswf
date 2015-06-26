@@ -12,13 +12,13 @@ describe Ntswf::Client do
   let(:config) {default_config}
 
   let(:client) { Ntswf.create(:client, config) }
-  before { client.stub :log }
+  before { allow(client).to receive :log }
 
   describe "starting an execution" do
     let(:execution) { AWS::SimpleWorkflow::WorkflowExecution.new("test", "workflow_id", "run_id") }
 
-    before { AWS::SimpleWorkflow::WorkflowType.any_instance.stub(start_execution: execution) }
-    before { AWS::SimpleWorkflow::WorkflowExecution.any_instance.stub(status: :open) }
+    before { allow_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive_messages(start_execution: execution) }
+    before { allow_any_instance_of(AWS::SimpleWorkflow::WorkflowExecution).to receive_messages(status: :open) }
 
     it "should use the master workflow type" do
       workflow_type = double.as_null_object
@@ -29,7 +29,7 @@ describe Ntswf::Client do
     end
 
     describe "returned values" do
-      before { AWS::SimpleWorkflow::WorkflowType.any_instance.should_receive(:start_execution) }
+      before { expect_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive(:start_execution) }
 
       subject do
         client.start_execution(
@@ -49,9 +49,10 @@ describe Ntswf::Client do
     describe "passed workflow execution args" do
       subject do
         args = nil
-        AWS::SimpleWorkflow::WorkflowType.any_instance.stub(:start_execution).with do |a|
-          args = a
-        end.and_return(execution)
+        allow_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive(:start_execution) do |type, options|
+          args = options
+          execution
+        end
         client.start_execution(execution_id: "the_id", name: :the_worker, unit: "test")
         args
       end
@@ -83,7 +84,7 @@ describe Ntswf::Client do
     let(:mock_status) {:fantasyland}
     let(:execution) { AWS::SimpleWorkflow::WorkflowExecution.new(nil, "flow_id", "r1") }
 
-    before { AWS::SimpleWorkflow::WorkflowExecution.any_instance.stub(status: mock_status) }
+    before { allow_any_instance_of(AWS::SimpleWorkflow::WorkflowExecution).to receive_messages(status: mock_status) }
 
     let(:event_started) do
       double("history_event: started", event_type: "WorkflowExecutionStarted", attributes:
@@ -116,8 +117,8 @@ describe Ntswf::Client do
 
     subject do
       executions = AWS::SimpleWorkflow::WorkflowExecutionCollection.new(nil)
-      client.domain.should_receive(:workflow_executions).and_return(executions)
-      AWS::SimpleWorkflow::WorkflowExecutionCollection.any_instance.should_receive(:at).with(
+      expect(client.domain).to receive(:workflow_executions).and_return(executions)
+      expect_any_instance_of(AWS::SimpleWorkflow::WorkflowExecutionCollection).to receive(:at).with(
           "flow_id", "some_run_id").and_return(execution)
       client.find(workflow_id: "flow_id", run_id: "some_run_id")
     end
@@ -131,17 +132,25 @@ describe Ntswf::Client do
     }}
 
     describe "properties of" do
-      before do
-        execution.stub(history_events: events)
-        events.stub(reverse_order: events.reverse)
+      let(:events) do
+        instance_double(AWS::SimpleWorkflow::HistoryEventCollection,
+          reverse_order: event_array.reverse,
+          first: event_array.first,
+          map: event_array.map,
+        )
       end
+
+      before { allow(execution).to receive_messages(history_events: events) }
 
       describe "old tasks for backwards compatibility" do
         let(:input) { ["legacy", [1, 2, 3]] }
-        let(:events) do
+        let(:event_array) do
           [
-            double(event_type: "WorkflowExecutionStarted", attributes:
-                AWS::SimpleWorkflow::HistoryEvent::Attributes.new(nil, "input" => input.to_json))
+            instance_double(AWS::SimpleWorkflow::HistoryEvent,
+              event_type: "WorkflowExecutionStarted",
+              attributes:
+                  AWS::SimpleWorkflow::HistoryEvent::Attributes.new(nil, "input" => input.to_json)
+            )
           ]
         end
 
@@ -150,38 +159,38 @@ describe Ntswf::Client do
       end
 
       describe "an open task" do
-        let(:events) { [event_started] }
+        let(:event_array) { [event_started] }
         let(:mock_status) { :open }
-        it { should include expected }
+        it { is_expected.to include expected }
       end
 
       describe "a completed task" do
         let(:mock_status) { :completed }
 
         context "with consistent history events" do
-          let(:events) { [event_started, event_completed] }
-          it { should include(expected.merge(outcome: "some result")) }
+          let(:event_array) { [event_started, event_completed] }
+          it { is_expected.to include(expected.merge(outcome: "some result")) }
         end
 
         context "with inconsistent history events" do
-          let(:events) { [event_started] }
-          it { should eq(expected.merge(status: :open)) }
+          let(:event_array) { [event_started] }
+          it { is_expected.to eq(expected.merge(status: :open)) }
         end
       end
 
       describe "a failed task" do
-        let(:events) { [event_started, event_failed] }
-        it { should include(expected.merge(error: "error message")) }
+        let(:event_array) { [event_started, event_failed] }
+        it { is_expected.to include(expected.merge(error: "error message")) }
       end
 
       describe "an exception task" do
-        let(:events) { [event_started, event_exception] }
-        it { should eq(expected.merge(exception: "TheExceptionClass", error: "error message")) }
+        let(:event_array) { [event_started, event_exception] }
+        it { is_expected.to eq(expected.merge(exception: "TheExceptionClass", error: "error message")) }
       end
 
       describe "a cancelled task" do
-        let(:events) { [event_started, event_cancelled] }
-        it { should eq(expected.merge(
+        let(:event_array) { [event_started, event_cancelled] }
+        it { is_expected.to eq(expected.merge(
             exception: "WorkflowExecutionCanceled", error: "WorkflowExecutionCanceled")) }
       end
     end

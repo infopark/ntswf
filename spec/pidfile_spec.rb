@@ -6,7 +6,7 @@ describe "PID file" do
   let(:config) { {pidfile: tmpfile.path} }
   let(:worker) { Ntswf.create(:worker, config) }
 
-  before { worker.stub(announce: nil, log: nil) }
+  before { allow(worker).to receive_messages(announce: nil, log: nil) }
 
   def run_subprocess
     worker.in_subprocess :hash
@@ -16,13 +16,13 @@ describe "PID file" do
 
   describe "storing the current PID" do
     subject { File.read tmpfile.path }
-    it { should eq Process.pid.to_s }
+    it { is_expected.to eq Process.pid.to_s }
   end
 
   describe "validating the PID" do
     context "when modified" do
       before { File.write(tmpfile.path, "something else") }
-      before { worker.should_receive(:notify).with(/changed.+PID file/, anything) }
+      before { expect(worker).to receive(:notify).with(/changed.+PID file/, anything) }
       specify { expect { run_subprocess }.to raise_error SystemExit }
     end
 
