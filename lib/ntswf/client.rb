@@ -24,14 +24,23 @@ module Ntswf
     #   The executing unit's key, a corresponding activity task list must be configured
     # @option options [Numeric] :version
     #   Optional minimum version of the client. The task may be rescheduled by older clients.
-    # @return (see #find)
+    # @return [Hash]
+    #   Execution properties.
+    #   :name:: Given task kind
+    #   :params:: Custom params from JSON
+    #   :run_id:: The workflow execution's run ID
+    #   :status:: Always :open. The actual state can be fetched using #find
+    #   :workflow_id:: The workflow execution's workflow ID
     # @raise [Errors::AlreadyStarted]
     def start_execution(options)
       workflow_execution = start_swf_workflow_execution(options)
-      execution_details(workflow_execution).merge!(
+      {
         name: options[:name].to_s,
         params: options[:params],
-      )
+        status: :open,
+        workflow_id: workflow_execution.workflow_id,
+        run_id: workflow_execution.run_id,
+      }
     end
 
     # Get status and details of a workflow execution.
@@ -73,18 +82,15 @@ module Ntswf
       [prefix, suffix].join(separator)
     end
 
-    def execution_details(workflow_execution)
-      {
+    def history_details(workflow_execution)
+      input = parse_input workflow_execution.history_events.first.attributes.input
+      result = {
+        status: workflow_execution.status,
         workflow_id: workflow_execution.workflow_id,
         run_id: workflow_execution.run_id,
-        status: workflow_execution.status,
+        name: input["name"].to_s,
+        params: input["params"],
       }
-    end
-
-    def history_details(workflow_execution)
-      result = execution_details(workflow_execution)
-      input = parse_input workflow_execution.history_events.first.attributes.input
-      result.merge!(name: input["name"].to_s, params: input["params"])
 
       case result[:status]
       when :open

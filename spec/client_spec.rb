@@ -44,6 +44,15 @@ describe Ntswf::Client do
       its([:status]) { should eq :open }
       its([:name]) { should eq "the_worker" }
       its([:workflow_id]) { should eq "workflow_id" }
+
+      context "when the execution failed extremely fast" do
+        before do
+          allow_any_instance_of(AWS::SimpleWorkflow::WorkflowExecution).
+              to receive(:status).and_return(:failed)
+        end
+
+        its([:status]) { should eq :open }
+      end
     end
 
     describe "passed workflow execution args" do
