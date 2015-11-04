@@ -24,7 +24,13 @@ module Ntswf
     #   The executing unit's key, a corresponding activity task list must be configured
     # @option options [Numeric] :version
     #   Optional minimum version of the client. The task may be rescheduled by older clients.
-    # @return (see #find)
+    # @return [Hash]
+    #   Execution properties.
+    #   :name:: Given task kind
+    #   :params:: Custom params from JSON
+    #   :run_id:: The workflow execution's run ID
+    #   :status:: Always :open. The actual state can be fetched using #find
+    #   :workflow_id:: The workflow execution's workflow ID
     # @raise [Errors::AlreadyStarted]
     def start_execution(options)
       workflow_execution = start_swf_workflow_execution(options)
