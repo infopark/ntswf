@@ -31,6 +31,7 @@ module Ntswf
       execution_details(workflow_execution).merge!(
         name: options[:name].to_s,
         params: options[:params],
+        status: :open,
       )
     end
 
@@ -77,7 +78,6 @@ module Ntswf
       {
         workflow_id: workflow_execution.workflow_id,
         run_id: workflow_execution.run_id,
-        status: workflow_execution.status,
       }
     end
 
@@ -86,7 +86,7 @@ module Ntswf
       input = parse_input workflow_execution.history_events.first.attributes.input
       result.merge!(name: input["name"].to_s, params: input["params"])
 
-      case result[:status]
+      case result[:status] = workflow_execution.status
       when :open
         # nothing
       when :completed
