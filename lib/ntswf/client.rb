@@ -34,11 +34,13 @@ module Ntswf
     # @raise [Errors::AlreadyStarted]
     def start_execution(options)
       workflow_execution = start_swf_workflow_execution(options)
-      execution_details(workflow_execution).merge!(
+      {
         name: options[:name].to_s,
         params: options[:params],
         status: :open,
-      )
+        workflow_id: workflow_execution.workflow_id,
+        run_id: workflow_execution.run_id,
+      }
     end
 
     # Get status and details of a workflow execution.
@@ -80,19 +82,17 @@ module Ntswf
       [prefix, suffix].join(separator)
     end
 
-    def execution_details(workflow_execution)
-      {
+    def history_details(workflow_execution)
+      input = parse_input workflow_execution.history_events.first.attributes.input
+      result = {
+        status: workflow_execution.status,
         workflow_id: workflow_execution.workflow_id,
         run_id: workflow_execution.run_id,
+        name: input["name"].to_s,
+        params: input["params"],
       }
-    end
 
-    def history_details(workflow_execution)
-      result = execution_details(workflow_execution)
-      input = parse_input workflow_execution.history_events.first.attributes.input
-      result.merge!(name: input["name"].to_s, params: input["params"])
-
-      case result[:status] = workflow_execution.status
+      case result[:status]
       when :open
         # nothing
       when :completed
