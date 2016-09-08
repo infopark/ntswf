@@ -7,9 +7,9 @@ Gem::Specification.new do |s|
   s.license = 'LGPL-3.0'
   s.name = 'ntswf'
   s.platform = Gem::Platform::RUBY
-  s.required_ruby_version = '>= 1.9.3'
+  s.required_ruby_version = '>= 2.0.0'
   s.summary = 'Not That Simple Workflow'
-  s.version = '2.2.2'
+  s.version = '2.3.0'
 
   s.add_runtime_dependency 'aws-sdk-v1', '~> 1.64'
 
