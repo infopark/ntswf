@@ -45,26 +45,28 @@ describe Ntswf::DecisionWorker do
     end
 
     describe "handling event" do
+      subject(:handle_event) { worker.process_decision_task }
+
       before do
         allow_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).to receive(
             :poll_for_single_task).and_yield(task)
       end
 
-      describe "ActivityTaskTimedOut" do
+      context "ActivityTaskTimedOut" do
         let(:event_type) {"ActivityTaskTimedOut"}
 
         it "should cancel the execution" do
           expect(task).to receive :cancel_workflow_execution
-          worker.process_decision_task
+          handle_event
         end
 
         it "should notify" do
           expect(worker).to receive :notify
-          worker.process_decision_task
+          handle_event
         end
       end
 
-      describe "ActivityTaskCompleted" do
+      context "ActivityTaskCompleted" do
         let(:event_type) {"ActivityTaskCompleted"}
 
         context "when requesting re-execution per seconds_until_retry" do
@@ -72,7 +74,7 @@ describe Ntswf::DecisionWorker do
 
           it "schedules a timer event" do
             expect(task).to receive(:start_timer).with(321, anything)
-            worker.process_decision_task
+            handle_event
           end
         end
 
@@ -81,7 +83,7 @@ describe Ntswf::DecisionWorker do
 
           it "schedules a timer event" do
             expect(task).to receive(:start_timer).with(321, control: result)
-            worker.process_decision_task
+            handle_event
           end
         end
 
@@ -90,12 +92,12 @@ describe Ntswf::DecisionWorker do
 
           it "schedules a workflow completed event" do
             expect(task).to receive(:complete_workflow_execution).with(result: result)
-            worker.process_decision_task
+            handle_event
           end
         end
       end
 
-      describe "WorkflowExecutionStarted" do
+      context "WorkflowExecutionStarted" do
         let(:event_type) {"WorkflowExecutionStarted"}
 
         it "should schedule an activity task avoiding defaults" do
@@ -107,7 +109,7 @@ describe Ntswf::DecisionWorker do
             start_to_close_timeout: anything,
             task_list: "atl",
           ))
-          worker.process_decision_task
+          handle_event
         end
 
         it "should use the master activity type" do
@@ -115,7 +117,7 @@ describe Ntswf::DecisionWorker do
             expect(activity_type.name).to eq "master-activity"
             expect(activity_type.version).to eq "v1"
           }
-          worker.process_decision_task
+          handle_event
         end
 
         context "given no app in charge" do
@@ -124,12 +126,22 @@ describe Ntswf::DecisionWorker do
           it "should schedule an activity task for a guessed task list" do
             expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
                 task_list: "atl"))
-            worker.process_decision_task
+            handle_event
+          end
+        end
+
+        context "with an activity group given" do
+          let(:options) { {activity_group: "special-task-force"} }
+
+          it "schedules an activity task for a special task list" do
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                task_list: "atl-special-task-force"))
+            handle_event
           end
         end
       end
 
-      describe "ActivityTaskFailed" do
+      context "ActivityTaskFailed" do
         let(:event_type) {"ActivityTaskFailed"}
 
         context "without retry" do
@@ -137,12 +149,12 @@ describe Ntswf::DecisionWorker do
 
           it "should fail" do
             expect(task).to receive(:fail_workflow_execution)
-            worker.process_decision_task
+            handle_event
           end
 
           it "should not re-schedule the task" do
             expect(task).not_to receive(:schedule_activity_task)
-            worker.process_decision_task
+            handle_event
           end
         end
 
@@ -151,7 +163,7 @@ describe Ntswf::DecisionWorker do
 
           it "should not fail" do
             expect(task).not_to receive(:fail_workflow_execution)
-            worker.process_decision_task
+            handle_event
           end
 
           it "should re-schedule the task" do
@@ -163,12 +175,22 @@ describe Ntswf::DecisionWorker do
               start_to_close_timeout: anything,
               task_list: "atl",
             ))
-            worker.process_decision_task
+            handle_event
+          end
+
+          context "with an activity group given" do
+            let(:options) { {activity_group: "special-task-force"} }
+
+            it "schedules an activity task for a special task list" do
+              expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                  task_list: "atl-special-task-force"))
+              handle_event
+            end
           end
         end
       end
 
-      describe "TimerFired" do
+      context "TimerFired" do
         let(:event_type) {"TimerFired"}
         let(:started_attributes_hash) { {} }
         let(:started_attributes) do
@@ -194,7 +216,7 @@ describe Ntswf::DecisionWorker do
           it "should continue with mandatory attributes" do
             expect(task).to receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
-            worker.process_decision_task
+            handle_event
           end
         end
 
@@ -205,15 +227,15 @@ describe Ntswf::DecisionWorker do
           it "should continue as new" do
             expect(task).to receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
-            worker.process_decision_task
+            handle_event
           end
 
-          describe "backwards compatibility" do
+          context "backwards compatibility" do
             let(:control) { {perform_again: 9}.to_json }
 
             it "should continue as new" do
               expect(task).to receive(:continue_as_new_workflow_execution)
-              worker.process_decision_task
+              handle_event
             end
           end
         end
@@ -228,7 +250,17 @@ describe Ntswf::DecisionWorker do
               start_to_close_timeout: anything,
               task_list: "atl",
             ))
-            worker.process_decision_task
+            handle_event
+          end
+        end
+
+        context "with an activity group given" do
+          let(:options) { {activity_group: "special-task-force"} }
+
+          it "schedules an activity task for a special task list" do
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                task_list: "atl-special-task-force"))
+            handle_event
           end
         end
       end
@@ -248,18 +280,18 @@ describe Ntswf::DecisionWorker do
 
             it "should start a timer" do
               expect(task).to receive(:start_timer).with(1234, anything)
-              worker.process_decision_task
+              handle_event
             end
           end
         end
 
-        describe "string options for compatibility" do
+        context "string options for compatibility" do
           let(:event_type) { "ActivityTaskCompleted" }
           let(:input) { ["interval", {}].to_json }
 
           it "should not be interpreted" do
             expect(task).not_to receive :start_timer
-            worker.process_decision_task
+            handle_event
           end
         end
       end

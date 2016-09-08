@@ -99,6 +99,9 @@ module Ntswf
       raise Errors::InvalidArgument.new(
           "Missing activity task list config for #{app_in_charge.inspect}") unless task_list
 
+      if task_list_suffix = options['activity_group']
+        task_list += "-#{task_list_suffix}"
+      end
       task.schedule_activity_task(activity_type, {
         heartbeat_timeout: :none,
         input: input,
