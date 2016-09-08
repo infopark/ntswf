@@ -84,20 +84,48 @@ describe Ntswf::DecisionWorker do
 
         shared_examples_for "handling task specific activity group" do |expected_task_list|
           context "without activity group specified" do
-            it "schedules an activity task for the unit's task list" do
-              expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-                  task_list: expected_task_list))
-              process_task
+            context "without activity group configured" do
+              let(:config) { default_config.reject {|k, _| k == :activity_group } }
+
+              it "schedules an activity task for the unit's task list" do
+                expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                    task_list: expected_task_list))
+                process_task
+              end
+            end
+
+            context "with activity group configured" do
+              let(:config) { default_config.merge(activity_group: "default_group") }
+
+              it "schedules an activity task for the default group's task list" do
+                expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                    task_list: "#{expected_task_list}-default_group"))
+                process_task
+              end
             end
           end
 
           context "with activity group specified" do
             let(:options) { super().merge(activity_group: "special-task-force") }
 
-            it "schedules an activity task for the given group's task list" do
-              expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-                  task_list: "#{expected_task_list}-special-task-force"))
-              process_task
+            context "without activity group configured" do
+              let(:config) { default_config.reject {|k, _| k == :activity_group } }
+
+              it "schedules an activity task for the given group's task list" do
+                expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                    task_list: "#{expected_task_list}-special-task-force"))
+                process_task
+              end
+            end
+
+            context "with activity group configured" do
+              let(:config) { default_config.merge(activity_group: "default_group") }
+
+              it "schedules an activity task for the given group's task list" do
+                expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                    task_list: "#{expected_task_list}-special-task-force"))
+                process_task
+              end
             end
           end
         end
@@ -123,10 +151,24 @@ describe Ntswf::DecisionWorker do
         context "for legacy input" do
           let(:input) { ["legacy_stuff", {}].to_json }
 
-          it "uses a guessed task list" do
-            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-                task_list: "unit_by_workflow_type-atl"))
-            process_task
+          context "without activity group configured" do
+            let(:config) { default_config.reject {|k, _| k == :activity_group } }
+
+            it "uses a guessed task list" do
+              expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                  task_list: "unit_by_workflow_type-atl"))
+              process_task
+            end
+          end
+
+          context "with activity group configured" do
+            let(:config) { default_config.merge(activity_group: "default_group") }
+
+            it "schedules an activity task for the default group's task list" do
+              expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                  task_list: "unit_by_workflow_type-atl-default_group"))
+              process_task
+            end
           end
         end
       end

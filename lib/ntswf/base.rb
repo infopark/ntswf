@@ -77,6 +77,10 @@ module Ntswf
       @config.activity_task_lists
     end
 
+    def activity_group
+      @config.activity_group
+    end
+
     def decision_task_list
       @config.decision_task_list or raise Errors::InvalidArgument.new(
           "Missing decision task list configuration")
