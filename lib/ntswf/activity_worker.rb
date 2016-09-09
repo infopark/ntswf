@@ -49,10 +49,9 @@ module Ntswf
 
     def activity_task_list
       @activity_task_list ||= (
-        task_list = activity_task_lists[default_unit] or raise Errors::InvalidArgument.new(
+        activity_group_list(activity_task_lists[default_unit], activity_group) or
+            raise Errors::InvalidArgument.new(
             "Missing activity task list configuration for default unit '#{default_unit}'")
-        task_list += "-#{activity_group}" if activity_group
-        task_list
       )
     end
 

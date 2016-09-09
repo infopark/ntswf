@@ -168,5 +168,11 @@ module Ntswf
       File.write(file, SecureRandom.hex(9)) unless File.exist?(file)
       @isolation_id ||= File.read(file)
     end
+
+    def activity_group_list(task_list, activity_group)
+      return unless task_list
+      task_list += "-#{activity_group}" if activity_group
+      task_list
+    end
   end
 end

@@ -95,13 +95,11 @@ module Ntswf
       input = data_providing_event.attributes.input
       options = parse_input(input)
       app_in_charge = options['unit'] || guess_app_from(data_providing_event)
-      task_list = activity_task_lists[app_in_charge]
+      activity_group = options['activity_group'] || self.activity_group
+      task_list = activity_group_list(activity_task_lists[app_in_charge], activity_group)
       raise Errors::InvalidArgument.new(
           "Missing activity task list config for #{app_in_charge.inspect}") unless task_list
 
-      if task_list_suffix = options['activity_group'] || activity_group
-        task_list += "-#{task_list_suffix}"
-      end
       task.schedule_activity_task(activity_type, {
         heartbeat_timeout: :none,
         input: input,
