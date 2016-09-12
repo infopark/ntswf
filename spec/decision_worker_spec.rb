@@ -5,7 +5,10 @@ describe Ntswf::DecisionWorker do
   let(:default_config) do
     {
       unit: "default-unit",
-      decision_task_list: "default-dtl",
+      decision_task_lists: {
+        "default-unit" => "default-unit-dtl",
+        "other-unit" => "other-unit-dtl",
+      },
       activity_task_lists: {
         "default-unit" => "default-unit-atl",
         "other-unit" => "other-unit-atl",
@@ -39,7 +42,7 @@ describe Ntswf::DecisionWorker do
     context "polling for an event" do
       it "should only query for the configured task list" do
         expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
-            to receive(:poll_for_single_task).with("default-dtl", {})
+            to receive(:poll_for_single_task).with("default-unit-dtl", {})
         process_task
       end
 
@@ -52,6 +55,30 @@ describe Ntswf::DecisionWorker do
               with(anything, identity: "#{Socket.gethostname}:#{Process.pid}:id_suff")
 
           process_task
+        end
+      end
+
+      context "for legacy config" do
+        let(:config) do
+          default_config.merge(decision_task_list: "legacy-dtl").tap do |c|
+            c.delete(:decision_task_lists)
+          end
+        end
+
+        it "should only query for the configured task list" do
+          expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+              to receive(:poll_for_single_task).with("legacy-dtl", {})
+          process_task
+        end
+
+        context "when modern configuration also exists" do
+          let(:config) { default_config.merge(decision_task_list: "legacy-dtl") }
+
+          it "the modern config wins" do
+            expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+                to receive(:poll_for_single_task).with("default-unit-dtl", {})
+            process_task
+          end
         end
       end
     end

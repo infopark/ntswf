@@ -9,7 +9,8 @@ module Ntswf
     #   AWS credential (deprecated, should use swf option)
     # @option config [Hash] :activity_task_lists
     #   The task list names for activities as hash (see also *:unit*)
-    # @option config [String] :decision_task_list The task list name for decisions
+    # @option config [String] :decision_task_lists
+    #   The task list names for decisions as hash (see also *:unit*)
     # @option config [String] :domain The SWF domain name
     # @option config [String] :execution_id_prefix
     #   (value of :unit) Workflow ID prefix
@@ -81,9 +82,12 @@ module Ntswf
       @config.activity_group
     end
 
+    def decision_task_lists
+      @config.decision_task_lists
+    end
+
     def decision_task_list
-      @config.decision_task_list or raise Errors::InvalidArgument.new(
-          "Missing decision task list configuration")
+      decision_task_lists[default_unit]
     end
 
     def default_unit
@@ -136,7 +140,8 @@ module Ntswf
 
     def raise_if_invalid_task_list
       atl_values = activity_task_lists.values if activity_task_lists
-      [*atl_values, *@config.decision_task_list].each do |task_list|
+      dtl_values = decision_task_lists.values if decision_task_lists
+      [*atl_values, *dtl_values, *@config.decision_task_list].each do |task_list|
         if task_list.include?(separator)
           raise Errors::InvalidArgument.new(
               "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use.")
@@ -149,8 +154,17 @@ module Ntswf
     end
 
     def autocomplete_task_list_names!
-      @config.decision_task_list = autocomplete(@config.decision_task_list, "master-dtl")
+      if @config.decision_task_lists
+        @config.decision_task_lists = @config.decision_task_lists.dup
+        @config.decision_task_lists.each do |key, value|
+          @config.decision_task_lists[key] = autocomplete(value, "#{key}-dtl")
+        end
+      else
+        @config.decision_task_lists =
+            {default_unit => autocomplete(@config.decision_task_list, "master-dtl")}
+      end
       if @config.activity_task_lists
+        @config.activity_task_lists = @config.activity_task_lists.dup
         @config.activity_task_lists.each do |key, value|
           @config.activity_task_lists[key] = autocomplete(value, "#{key}-atl")
         end

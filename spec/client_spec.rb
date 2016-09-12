@@ -5,7 +5,7 @@ describe Ntswf::Client do
   let(:default_config) do
     {
       activity_task_lists: {"test" => "atl"},
-      decision_task_list: "dtl",
+      decision_task_lists: {"test" => "dtl", "other" => "other-dtl"},
       unit: "test",
     }
   end
@@ -16,27 +16,35 @@ describe Ntswf::Client do
 
   describe "starting an execution" do
     let(:execution) { AWS::SimpleWorkflow::WorkflowExecution.new("test", "workflow_id", "run_id") }
+    let(:options) do
+      {
+        execution_id: "the_id",
+        name: :the_worker,
+        params: {param: "test"},
+        unit: "test",
+      }
+    end
 
-    before { allow_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive_messages(start_execution: execution) }
-    before { allow_any_instance_of(AWS::SimpleWorkflow::WorkflowExecution).to receive_messages(status: :open) }
+    subject(:start_execution) { client.start_execution(options) }
+
+    before do
+      allow_any_instance_of(AWS::SimpleWorkflow::WorkflowType).
+          to receive_messages(start_execution: execution)
+      allow_any_instance_of(AWS::SimpleWorkflow::WorkflowExecution).
+          to receive_messages(status: :open)
+    end
 
     it "should use the master workflow type" do
       workflow_type = double.as_null_object
       expect(AWS::SimpleWorkflow::WorkflowType).to receive(:new).
           with(anything, 'master-workflow', 'v1').and_return workflow_type
-      client.start_execution({})
+      start_execution
       expect(workflow_type).to have_received :start_execution
     end
 
     describe "returned values" do
-      before { expect_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive(:start_execution) }
-
-      subject do
-        client.start_execution(
-          execution_id: "the_id",
-          name: :the_worker,
-          params: {param: "test"},
-        )
+      before do
+        expect_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive(:start_execution)
       end
 
       its([:run_id]) { should eq "run_id" }
@@ -56,35 +64,67 @@ describe Ntswf::Client do
     end
 
     describe "passed workflow execution args" do
-      subject do
+      subject(:passed_args) do
         args = nil
-        allow_any_instance_of(AWS::SimpleWorkflow::WorkflowType).to receive(:start_execution) do |type, options|
-          args = options
-          execution
-        end
-        client.start_execution(execution_id: "the_id", name: :the_worker, unit: "test")
+        allow_any_instance_of(AWS::SimpleWorkflow::WorkflowType).
+            to receive(:start_execution) do |type, options|
+              args = options
+              execution
+            end
+        start_execution
         args
       end
 
-      its([:tag_list]) { should eq(["test", "the_worker"]) }
-      its([:workflow_id]) { should eq "test;the_id" }
+      its([:tag_list]) { is_expected.to eq(["test", "the_worker"]) }
+      its([:workflow_id]) { is_expected.to eq("test;the_id") }
+      its([:task_list]) { is_expected.to eq("dtl") }
 
       expected_args = [
         :child_policy,
         :execution_start_to_close_timeout,
         :input,
-        :tag_list,
-        :task_list,
         :task_start_to_close_timeout,
       ]
       expected_args.each do |expected_arg|
-        its([expected_arg]) { should_not be_nil }
+        its([expected_arg]) { is_expected.to_not be_nil }
       end
 
       context "when configured with a service" do
-        let(:config) {default_config.merge(execution_id_prefix: "cms")}
+        let(:config) { default_config.merge(execution_id_prefix: "cms") }
 
-        its([:workflow_id]) { should eq "cms;the_id" }
+        its([:workflow_id]) { is_expected.to eq("cms;the_id") }
+      end
+
+      context "with legacy config" do
+        let(:config) do
+          default_config.merge(decision_task_list: "legacy-dtl").tap do |c|
+            c.delete(:decision_task_lists)
+          end
+        end
+
+        its([:task_list]) { is_expected.to eq("legacy-dtl") }
+      end
+
+      context "when started for a different unit" do
+        let(:options) { super().merge(unit: "other") }
+
+        its([:task_list]) { is_expected.to eq("other-dtl") }
+
+        context "with legacy config" do
+          let(:config) do
+            default_config.merge(decision_task_list: "legacy-dtl").tap do |c|
+              c.delete(:decision_task_lists)
+            end
+          end
+
+          its([:task_list]) { is_expected.to eq("legacy-dtl") }
+        end
+      end
+
+      context "when started without explicitly specifying a unit" do
+        let(:options) { super().tap {|o| o.delete(:unit) } }
+
+        its([:task_list]) { is_expected.to eq("dtl") }
       end
     end
   end

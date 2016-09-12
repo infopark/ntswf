@@ -72,7 +72,7 @@ module Ntswf
         execution_start_to_close_timeout: 48 * 3600,
         input: options.to_json,
         tag_list: [options[:unit].to_s, options[:name].to_s] + Array(options[:tag_list]),
-        task_list: decision_task_list,
+        task_list: decision_task_lists[options[:unit]] || decision_task_list,
         task_start_to_close_timeout: 10 * 60,
         workflow_id: workflow_id(execution_id_prefix, execution_id),
       )
