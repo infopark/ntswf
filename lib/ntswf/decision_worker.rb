@@ -95,8 +95,7 @@ module Ntswf
       input = data_providing_event.attributes.input
       options = parse_input(input)
       app_in_charge = options['unit'] || guess_app_from(data_providing_event)
-      activity_group = options['activity_group'] || self.activity_group
-      task_list = activity_group_list(activity_task_lists[app_in_charge], activity_group)
+      task_list = activity_group_list(app_in_charge, options['activity_group'])
       raise Errors::InvalidArgument.new(
           "Missing activity task list config for #{app_in_charge.inspect}") unless task_list
 

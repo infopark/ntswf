@@ -86,10 +86,6 @@ module Ntswf
       @config.activity_task_lists
     end
 
-    def activity_group
-      @config.activity_group
-    end
-
     def decision_task_lists
       @config.decision_task_lists
     end
@@ -191,8 +187,12 @@ module Ntswf
       @isolation_id ||= File.read(file)
     end
 
-    def activity_group_list(task_list, activity_group)
-      return unless task_list
+    def activity_group_list(unit = nil, activity_group = nil)
+      unit ||= default_unit
+      unless task_list = activity_task_lists[unit]
+        raise Errors::InvalidArgument.new("Missing activity task list config for #{unit.inspect}")
+      end
+      activity_group ||= @config.activity_group
       task_list += "-#{activity_group}" if activity_group
       task_list
     end
