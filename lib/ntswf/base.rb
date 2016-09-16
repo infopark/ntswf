@@ -6,17 +6,25 @@ module Ntswf
   module Base
     # @param config [Hash] A configuration with the following keys:
     # @option config [String] :access_key_id
-    #   AWS credential (deprecated, should use swf option)
+    #   *deprecated:* AWS credential. Deprecated, use :swf instead.
+    # @option config [String] :activity_group
+    #   The activity group that activity tasks belong to.
+    #   If this is defined the activity tasks will be scheduled into a task list extended by the
+    #   activity group. Activity workers will poll this task list, only.
+    #   See {Client#start_execution}'s :activity_group.
     # @option config [Hash] :activity_task_lists
-    #   The task list names for activities as hash (see also *:unit*)
-    # @option config [String] :decision_task_lists
-    #   The task list names for decisions as hash (see also *:unit*)
-    # @option config [String] :domain The SWF domain name
+    #   The task list names for activities per :unit.
+    # @option config [String] :decision_task_list
+    #   *deprecated:* The task list name for decisions.
+    #   Deprecated, use :decision_task_lists instead.
+    # @option config [Hash] :decision_task_lists
+    #   The task list names for decisions per :unit.
+    # @option config [String] :domain The SWF domain name.
     # @option config [String] :execution_id_prefix
     #   (value of :unit) Workflow ID prefix
-    #   (see {Client#start_execution}'s *:execution_id* for allowed values)
+    #   (see {Client#start_execution}'s :execution_id for allowed values).
     # @option config [Numeric] :execution_version
-    #   Value allowing clients to reject future execution versions
+    #   Value allowing clients to reject future execution versions.
     # @option config [String] :identity_suffix
     #   When polling for a task, the suffix will be appended to the (default) identity
     #   (<hostname>:<pid>), delimited by a ":".
@@ -26,14 +34,14 @@ module Ntswf
     #   A random ID is stored at the given path, and prepended to task list names and execution IDs.
     # @option config [String] :pidfile
     #   A path receiving the current PID for looping methods. Causes exit, if
-    #   overwritten by another process. See {Worker#in_subprocess}
+    #   overwritten by another process. See {Worker#in_subprocess}.
     # @option config [String] :secret_access_key
-    #   AWS credential (deprecated, should use swf option)
-    # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
+    #   *deprecated:* AWS credential. Deprecated, use :swf instead.
+    # @option config [Numeric] :subprocess_retries (0) See {Worker#in_subprocess}.
     # @option config [AWS::SimpleWorkflow] :swf
-    #   AWS simple workflow object (created e.g. with AWS::SimpleWorkflow.new)
-    # @option config [String] :unit This worker/client's activity task list key
-    # @raise [Errors::InvalidArgument] If a task list name is invalid
+    #   AWS simple workflow object (created e.g. with AWS::SimpleWorkflow.new).
+    # @option config [String] :unit This worker/client's activity task list key.
+    # @raise [Errors::InvalidArgument] If a task list name is invalid.
     def configure(config)
       @config = OpenStruct.new(config)
       autocomplete_task_list_names!
