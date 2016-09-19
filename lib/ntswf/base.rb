@@ -7,11 +7,6 @@ module Ntswf
     # @param config [Hash] A configuration with the following keys:
     # @option config [String] :access_key_id
     #   *deprecated:* AWS credential. Deprecated, use :swf instead.
-    # @option config [String] :activity_group
-    #   The activity group that activity tasks belong to.
-    #   If this is defined the activity tasks will be scheduled into a task list extended by the
-    #   activity group. Activity workers will poll this task list, only.
-    #   See {Client#start_execution}'s :activity_group.
     # @option config [Hash] :activity_task_lists
     #   The task list names for activities per :unit.
     # @option config [String] :decision_task_list
@@ -185,16 +180,6 @@ module Ntswf
       return "" unless file
       File.write(file, SecureRandom.hex(9)) unless File.exist?(file)
       @isolation_id ||= File.read(file)
-    end
-
-    def activity_group_list(unit = nil, activity_group = nil)
-      unit ||= default_unit
-      unless task_list = activity_task_lists[unit]
-        raise Errors::InvalidArgument.new("Missing activity task list config for #{unit.inspect}")
-      end
-      activity_group ||= @config.activity_group
-      task_list += "-#{activity_group}" if activity_group
-      task_list
     end
   end
 end

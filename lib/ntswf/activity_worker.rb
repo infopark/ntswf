@@ -48,7 +48,9 @@ module Ntswf
     protected
 
     def activity_task_list
-      @activity_task_list ||= activity_group_list
+      @activity_task_list ||= activity_task_lists[default_unit] or
+          raise Errors::InvalidArgument.new(
+          "Missing activity task list configuration for default unit '#{default_unit}'")
     end
 
     def process_single_task(activity_task)

@@ -15,24 +15,10 @@ describe Ntswf::ActivityWorker do
 
   describe "processing an activity task" do
     context "polling for an event" do
-      context "without activity group configured" do
-        let(:config) { default_config.reject {|k, _| k == :activity_group } }
-
-        it "queries the default unit's task list" do
-          expect_any_instance_of(AWS::SimpleWorkflow::ActivityTaskCollection).
-              to receive(:poll_for_single_task).with("task_list", {})
-          worker.process_activity_task
-        end
-      end
-
-      context "with activity group configured" do
-        let(:config) { default_config.merge(activity_group: "activity_group") }
-
-        it "queries the default group's task list" do
-          expect_any_instance_of(AWS::SimpleWorkflow::ActivityTaskCollection).
-              to receive(:poll_for_single_task).with("task_list-activity_group", {})
-          worker.process_activity_task
-        end
+      it "queries the default unit's task list" do
+        expect_any_instance_of(AWS::SimpleWorkflow::ActivityTaskCollection).
+            to receive(:poll_for_single_task).with("task_list", {})
+        worker.process_activity_task
       end
 
       context "having an identify_suffix configured" do
