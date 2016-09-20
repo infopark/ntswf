@@ -13,12 +13,14 @@ describe Ntswf::ActivityWorker do
 
   before { allow(worker).to receive_messages(announce: nil, log: nil) }
 
-  describe "processing an activity task" do
+  describe "#process_activity_task" do
+    subject(:process_task) { worker.process_activity_task }
+
     context "polling for an event" do
       it "queries the default unit's task list" do
         expect_any_instance_of(AWS::SimpleWorkflow::ActivityTaskCollection).
             to receive(:poll_for_single_task).with("task_list", {})
-        worker.process_activity_task
+        process_task
       end
 
       context "having an identify_suffix configured" do
@@ -29,7 +31,17 @@ describe Ntswf::ActivityWorker do
               to receive(:poll_for_single_task).
               with(anything, identity: "#{Socket.gethostname}:#{Process.pid}:id_suff")
 
-          worker.process_activity_task
+          process_task
+        end
+      end
+
+      context "with missing activity task list configuration" do
+        let(:config) { default_config.merge(activity_task_lists: {"other" => "foo"}) }
+
+        it "fails" do
+          expect {
+            process_task
+          }.to raise_error(Ntswf::Errors::InvalidArgument, /Missing activity task list.*'test'/)
         end
       end
     end
@@ -42,12 +54,12 @@ describe Ntswf::ActivityWorker do
 
       context "given foreign activity type" do
         before { allow(activity_task).to receive_messages activity_type: :some_random_thing }
-        specify { expect { worker.process_activity_task }.to_not raise_error }
+        specify { expect { process_task }.to_not raise_error }
       end
 
-      context "given a task callback" do
+      describe "result of a task callback specified" do
         subject do
-          worker.process_activity_task
+          process_task
           test_result.join
         end
 
@@ -62,11 +74,11 @@ describe Ntswf::ActivityWorker do
         end
       end
 
-      describe "the task description" do
+      describe "the returned task description" do
         let(:input) { {name: "name", params: {my_param: :ok}, version: 1}.to_json }
         before { worker.on_activity ->(task) { test_result << task } }
         subject do
-          worker.process_activity_task
+          process_task
           test_result.first
         end
 
@@ -85,7 +97,7 @@ describe Ntswf::ActivityWorker do
           let(:message) { "error message" }
           let(:returned) { {error: message} }
           before { expect(activity_task).to receive(:fail!) {|args| test_result << args } }
-          before { worker.process_activity_task }
+          before { process_task }
 
           describe "report to SWF" do
             subject { test_result.first }
@@ -104,13 +116,13 @@ describe Ntswf::ActivityWorker do
         context "given a retry" do
           let(:returned) { {seconds_until_retry: 45} }
           before { expect(activity_task).to receive(:complete!).with(result: returned.to_json) }
-          specify { worker.process_activity_task }
+          specify { process_task }
         end
 
         context "given an error with immediate retry" do
           let(:returned) { {error: "try again", seconds_until_retry: 0} }
           before { expect(activity_task).to receive(:fail!) {|args| test_result << args } }
-          before { worker.process_activity_task }
+          before { process_task }
 
           describe "report to SWF" do
             subject { test_result.first }
@@ -123,14 +135,14 @@ describe Ntswf::ActivityWorker do
           let(:outcome) { {is: "ok"} }
           let(:returned) { {outcome: outcome} }
           before { expect(activity_task).to receive(:complete!).with(result: returned.to_json) }
-          specify { worker.process_activity_task }
+          specify { process_task }
         end
 
         context "given an exception" do
           let(:message) { "an exception" }
           let(:callback) { ->(task) { raise message } }
           before { expect(activity_task).to receive(:fail!) {|args| test_result << args } }
-          before { worker.process_activity_task }
+          before { process_task }
 
           describe "report to SWF" do
             subject { test_result.first }
