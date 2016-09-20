@@ -85,8 +85,11 @@ module Ntswf
       @config.decision_task_lists
     end
 
-    def decision_task_list
-      decision_task_lists[default_unit]
+    def decision_task_list(unit: nil)
+      unit ||= default_unit
+      decision_task_lists[unit] || decision_task_lists[default_unit] or
+          raise Errors::InvalidArgument.new(
+          "Missing decision task list configuration for unit '#{unit}'")
     end
 
     def default_unit

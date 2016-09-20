@@ -36,7 +36,7 @@ describe Ntswf::DecisionWorker do
 
   before { allow(worker).to receive_messages(announce: nil, log: nil) }
 
-  describe "processing a decision task" do
+  describe "#process_decision_task" do
     subject(:process_task) { worker.process_decision_task }
 
     context "polling for an event" do
@@ -323,6 +323,16 @@ describe Ntswf::DecisionWorker do
             expect(task).not_to receive :start_timer
             process_task
           end
+        end
+      end
+
+      context "with missing decision task list configuration" do
+        let(:event_type) { "does not matter" }
+        let(:config) { default_config.merge(decision_task_lists: {"other" => "foo"}) }
+
+        it "fails" do
+          expect { process_task }.to raise_error(
+              Ntswf::Errors::InvalidArgument, /Missing decision task list.*'default-unit'/)
         end
       end
     end

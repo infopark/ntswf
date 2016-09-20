@@ -127,6 +127,28 @@ describe Ntswf::Client do
         its([:task_list]) { is_expected.to eq("dtl") }
       end
     end
+
+    context "when decision task list configuration is missing" do
+      let(:config) { default_config.merge(decision_task_lists: {other: "foo"}) }
+
+      context "for the (implicit) default unit" do
+        let(:options) { super().tap {|o| o.delete(:unit) } }
+
+        it "fails" do
+          expect { start_execution }.to raise_error(
+              Ntswf::Errors::InvalidArgument, /Missing decision task list.*'test'/)
+        end
+      end
+
+      context "for an explicitly specified unit and the default unit (which is the fallback)" do
+        let(:options) { super().merge(unit: "no_dtl") }
+
+        it "fails" do
+          expect { start_execution }.to raise_error(
+              Ntswf::Errors::InvalidArgument, /Missing decision task list.*'no_dtl'/)
+        end
+      end
+    end
   end
 
   describe "finding" do
