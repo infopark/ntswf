@@ -81,6 +81,12 @@ module Ntswf
       @config.activity_task_lists
     end
 
+    def activity_task_list(unit: nil)
+      unit ||= default_unit
+      activity_task_lists[unit] or raise Errors::InvalidArgument.new(
+          "Missing activity task list configuration for unit '#{unit}'")
+    end
+
     def decision_task_lists
       @config.decision_task_lists
     end

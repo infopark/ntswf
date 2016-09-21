@@ -4,7 +4,7 @@ require "json"
 describe Ntswf::Client do
   let(:default_config) do
     {
-      activity_task_lists: {"test" => "atl"},
+      activity_task_lists: {"test" => "atl", "other" => "other-atl"},
       decision_task_lists: {"test" => "dtl", "other" => "other-dtl"},
       unit: "test",
     }
@@ -263,6 +263,42 @@ describe Ntswf::Client do
         let(:event_array) { [event_started, event_cancelled] }
         it { is_expected.to eq(expected.merge(
             exception: "WorkflowExecutionCanceled", error: "WorkflowExecutionCanceled")) }
+      end
+    end
+  end
+
+  describe "#activity_task_list" do
+    let(:options) { {} }
+
+    subject { client.activity_task_list(**options) }
+
+    context "without arguments" do
+      it("provides the default unit's activity task list") { is_expected.to eq("atl") }
+
+      context "without default unit activity task list configured" do
+        let(:config) { default_config.merge(activity_task_lists: {"other" => "other-atl"}) }
+
+        it "fails" do
+          expect {
+            subject
+          }.to raise_error(Ntswf::Errors::InvalidArgument, /Missing activity task list.*'test'/)
+        end
+      end
+    end
+
+    context "with unit given" do
+      let(:options) { {unit: "other"} }
+
+      it("provides the unit's activity task list") { is_expected.to eq("other-atl") }
+
+      context "without unit's activity task list configured" do
+        let(:options) { {unit: "no_atl"} }
+
+        it "fails" do
+          expect {
+            subject
+          }.to raise_error(Ntswf::Errors::InvalidArgument, /Missing activity task list.*'no_atl'/)
+        end
       end
     end
   end
