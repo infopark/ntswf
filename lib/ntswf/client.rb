@@ -11,7 +11,7 @@ module Ntswf
     # Excluding *:execution_id* they will be stored in the *input* argument of the task as JSON.
     # @param options [Hash] The task's options. Keys with special meaning:
     # @option options [String] :activity_task_list
-    #   The activity task list that this execution's activity tasks should belong to.
+    #   The activity task list that this execution's activity tasks are routed to.
     #   Should be +nil+ if the execution is not bound to a specific activity task list.
     # @option options [String] :execution_id
     #   Mandatory workflow ID suffix, allowed IDs are documented at docs.amazonwebservices.com
