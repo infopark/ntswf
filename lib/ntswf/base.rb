@@ -6,16 +6,20 @@ module Ntswf
   module Base
     # @param config [Hash] A configuration with the following keys:
     # @option config [String] :access_key_id
-    #   AWS credential (deprecated, should use swf option)
+    #   *deprecated:* AWS credential. Deprecated, use :swf instead.
     # @option config [Hash] :activity_task_lists
-    #   The task list names for activities as hash (see also *:unit*)
-    # @option config [String] :decision_task_list The task list name for decisions
-    # @option config [String] :domain The SWF domain name
+    #   The task list names for activities per :unit.
+    # @option config [String] :decision_task_list
+    #   *deprecated:* The task list name for decisions.
+    #   Deprecated, use :decision_task_lists instead.
+    # @option config [Hash] :decision_task_lists
+    #   The task list names for decisions per :unit.
+    # @option config [String] :domain The SWF domain name.
     # @option config [String] :execution_id_prefix
     #   (value of :unit) Workflow ID prefix
-    #   (see {Client#start_execution}'s *:execution_id* for allowed values)
+    #   (see {Client#start_execution}'s :execution_id for allowed values).
     # @option config [Numeric] :execution_version
-    #   Value allowing clients to reject future execution versions
+    #   Value allowing clients to reject future execution versions.
     # @option config [String] :identity_suffix
     #   When polling for a task, the suffix will be appended to the (default) identity
     #   (<hostname>:<pid>), delimited by a ":".
@@ -25,14 +29,14 @@ module Ntswf
     #   A random ID is stored at the given path, and prepended to task list names and execution IDs.
     # @option config [String] :pidfile
     #   A path receiving the current PID for looping methods. Causes exit, if
-    #   overwritten by another process. See {Worker#in_subprocess}
+    #   overwritten by another process. See {Worker#in_subprocess}.
     # @option config [String] :secret_access_key
-    #   AWS credential (deprecated, should use swf option)
-    # @option config [Numeric] :subprocess_retries (0) see {Worker#in_subprocess}
+    #   *deprecated:* AWS credential. Deprecated, use :swf instead.
+    # @option config [Numeric] :subprocess_retries (0) See {Worker#in_subprocess}.
     # @option config [AWS::SimpleWorkflow] :swf
-    #   AWS simple workflow object (created e.g. with AWS::SimpleWorkflow.new)
-    # @option config [String] :unit This worker/client's activity task list key
-    # @raise [Errors::InvalidArgument] If a task list name is invalid
+    #   AWS simple workflow object (created e.g. with AWS::SimpleWorkflow.new).
+    # @option config [String] :unit This worker/client's activity task list key.
+    # @raise [Errors::InvalidArgument] If a task list name is invalid.
     def configure(config)
       @config = OpenStruct.new(config)
       autocomplete_task_list_names!
@@ -77,9 +81,21 @@ module Ntswf
       @config.activity_task_lists
     end
 
-    def decision_task_list
-      @config.decision_task_list or raise Errors::InvalidArgument.new(
-          "Missing decision task list configuration")
+    def activity_task_list(unit: nil)
+      unit ||= default_unit
+      activity_task_lists[unit] or raise Errors::InvalidArgument.new(
+          "Missing activity task list configuration for unit '#{unit}'")
+    end
+
+    def decision_task_lists
+      @config.decision_task_lists
+    end
+
+    def decision_task_list(unit: nil)
+      unit ||= default_unit
+      decision_task_lists[unit] || decision_task_lists[default_unit] or
+          raise Errors::InvalidArgument.new(
+          "Missing decision task list configuration for unit '#{unit}'")
     end
 
     def default_unit
@@ -132,7 +148,8 @@ module Ntswf
 
     def raise_if_invalid_task_list
       atl_values = activity_task_lists.values if activity_task_lists
-      [*atl_values, *@config.decision_task_list].each do |task_list|
+      dtl_values = decision_task_lists.values if decision_task_lists
+      [*atl_values, *dtl_values, *@config.decision_task_list].each do |task_list|
         if task_list.include?(separator)
           raise Errors::InvalidArgument.new(
               "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use.")
@@ -145,8 +162,17 @@ module Ntswf
     end
 
     def autocomplete_task_list_names!
-      @config.decision_task_list = autocomplete(@config.decision_task_list, "master-dtl")
+      if @config.decision_task_lists
+        @config.decision_task_lists = @config.decision_task_lists.dup
+        @config.decision_task_lists.each do |key, value|
+          @config.decision_task_lists[key] = autocomplete(value, "#{key}-dtl")
+        end
+      else
+        @config.decision_task_lists =
+            {default_unit => autocomplete(@config.decision_task_list, "master-dtl")}
+      end
       if @config.activity_task_lists
+        @config.activity_task_lists = @config.activity_task_lists.dup
         @config.activity_task_lists.each do |key, value|
           @config.activity_task_lists[key] = autocomplete(value, "#{key}-atl")
         end

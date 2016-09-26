@@ -2,15 +2,26 @@ require "ntswf"
 require "json"
 
 describe Ntswf::DecisionWorker do
-  let(:atl_config) { { "test" => "atl" } }
-  let(:dtl_config) { "dtl" }
-  let(:unit) { "testt" }
-  let(:default_config) { { unit: unit, decision_task_list: dtl_config, activity_task_lists: atl_config } }
+  let(:default_config) do
+    {
+      unit: "default-unit",
+      decision_task_lists: {
+        "default-unit" => "default-unit-dtl",
+        "other-unit" => "other-unit-dtl",
+      },
+      activity_task_lists: {
+        "default-unit" => "default-unit-atl",
+        "other-unit" => "other-unit-atl",
+        "test" => "unit_by_workflow_type-atl",
+      }
+    }
+  end
+
   let(:config) { default_config }
   let(:worker) { Ntswf.create(:decision_worker, config) }
 
   let(:options) { {} }
-  let(:input) { options.merge('params' => {'test' => 'value'}).to_json }
+  let(:input) { options.merge('params' => {'key' => 'value'}).to_json }
   let(:reason) { nil }
   let(:result) { nil }
   let(:attributes_hash) { { input: input, reason: reason, result: result } }
@@ -25,46 +36,143 @@ describe Ntswf::DecisionWorker do
 
   before { allow(worker).to receive_messages(announce: nil, log: nil) }
 
-  describe "processing a decision task" do
-    it "should only query for the configured task list" do
-      expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
-          to receive(:poll_for_single_task).with("dtl", {})
-      worker.process_decision_task
-    end
+  describe "#process_decision_task" do
+    subject(:process_task) { worker.process_decision_task }
 
-    context "having an identify_suffix configured" do
-      let(:config) {default_config.merge("identity_suffix" => "id_suff")}
-
-      it "passes the identity to SWF" do
+    context "polling for an event" do
+      it "should only query for the configured task list" do
         expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
-            to receive(:poll_for_single_task).
-            with(anything, identity: "#{Socket.gethostname}:#{Process.pid}:id_suff")
+            to receive(:poll_for_single_task).with("default-unit-dtl", {})
+        process_task
+      end
 
-        worker.process_decision_task
+      context "having an identify_suffix configured" do
+        let(:config) {default_config.merge("identity_suffix" => "id_suff")}
+
+        it "passes the identity to SWF" do
+          expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+              to receive(:poll_for_single_task).
+              with(anything, identity: "#{Socket.gethostname}:#{Process.pid}:id_suff")
+
+          process_task
+        end
+      end
+
+      context "for legacy config" do
+        let(:config) do
+          default_config.merge(decision_task_list: "legacy-dtl").tap do |c|
+            c.delete(:decision_task_lists)
+          end
+        end
+
+        it "should only query for the configured task list" do
+          expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+              to receive(:poll_for_single_task).with("legacy-dtl", {})
+          process_task
+        end
+
+        context "when modern configuration also exists" do
+          let(:config) { default_config.merge(decision_task_list: "legacy-dtl") }
+
+          it "the modern config wins" do
+            expect_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).
+                to receive(:poll_for_single_task).with("default-unit-dtl", {})
+            process_task
+          end
+        end
       end
     end
 
-    describe "handling event" do
+    context "handling event" do
       before do
         allow_any_instance_of(AWS::SimpleWorkflow::DecisionTaskCollection).to receive(
             :poll_for_single_task).and_yield(task)
       end
 
-      describe "ActivityTaskTimedOut" do
+      shared_examples_for "scheduling an activity task" do
+        it "schedules an activity task" do
+          expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+            heartbeat_timeout: :none,
+            input: input,
+            schedule_to_close_timeout: anything,
+            schedule_to_start_timeout: anything,
+            start_to_close_timeout: anything,
+          ))
+          process_task
+        end
+
+        it "uses the master activity type" do
+          expect(task).to receive(:schedule_activity_task) {|activity_type|
+            expect(activity_type.name).to eq "master-activity"
+            expect(activity_type.version).to eq "v1"
+          }
+          process_task
+        end
+
+        shared_examples_for "handling task specific activity task list" do |expected_task_list|
+          context "without activity task list specified" do
+            it "schedules an activity task for the unit's task list" do
+              expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                  task_list: expected_task_list))
+              process_task
+            end
+          end
+
+          context "with activity task list specified" do
+            let(:options) { super().merge(activity_task_list: "special-task-force") }
+
+            it "schedules an activity task for the given task list" do
+              expect(task).to receive(:schedule_activity_task).
+                  with(anything, hash_including(task_list: "special-task-force"))
+              process_task
+            end
+          end
+        end
+
+        context "with unit given" do
+          let(:options) { {unit: "other-unit"} }
+
+          it_behaves_like "handling task specific activity task list", "other-unit-atl"
+        end
+
+        context "with unit not given" do
+          let(:options) { {} }
+
+          it "uses a guessed task list" do
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                task_list: "unit_by_workflow_type-atl"))
+            process_task
+          end
+
+          it_behaves_like "handling task specific activity task list", "unit_by_workflow_type-atl"
+        end
+
+        context "for legacy input" do
+          let(:input) { ["legacy_stuff", {}].to_json }
+
+          it "uses a guessed task list" do
+            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
+                task_list: "unit_by_workflow_type-atl"))
+            process_task
+          end
+        end
+      end
+
+      context "ActivityTaskTimedOut" do
         let(:event_type) {"ActivityTaskTimedOut"}
 
         it "should cancel the execution" do
           expect(task).to receive :cancel_workflow_execution
-          worker.process_decision_task
+          process_task
         end
 
         it "should notify" do
           expect(worker).to receive :notify
-          worker.process_decision_task
+          process_task
         end
       end
 
-      describe "ActivityTaskCompleted" do
+      context "ActivityTaskCompleted" do
         let(:event_type) {"ActivityTaskCompleted"}
 
         context "when requesting re-execution per seconds_until_retry" do
@@ -72,7 +180,7 @@ describe Ntswf::DecisionWorker do
 
           it "schedules a timer event" do
             expect(task).to receive(:start_timer).with(321, anything)
-            worker.process_decision_task
+            process_task
           end
         end
 
@@ -81,7 +189,7 @@ describe Ntswf::DecisionWorker do
 
           it "schedules a timer event" do
             expect(task).to receive(:start_timer).with(321, control: result)
-            worker.process_decision_task
+            process_task
           end
         end
 
@@ -90,46 +198,18 @@ describe Ntswf::DecisionWorker do
 
           it "schedules a workflow completed event" do
             expect(task).to receive(:complete_workflow_execution).with(result: result)
-            worker.process_decision_task
+            process_task
           end
         end
       end
 
-      describe "WorkflowExecutionStarted" do
+      context "WorkflowExecutionStarted" do
         let(:event_type) {"WorkflowExecutionStarted"}
 
-        it "should schedule an activity task avoiding defaults" do
-          expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-            heartbeat_timeout: :none,
-            input: anything,
-            schedule_to_close_timeout: anything,
-            schedule_to_start_timeout: anything,
-            start_to_close_timeout: anything,
-            task_list: "atl",
-          ))
-          worker.process_decision_task
-        end
-
-        it "should use the master activity type" do
-          expect(task).to receive(:schedule_activity_task) {|activity_type|
-            expect(activity_type.name).to eq "master-activity"
-            expect(activity_type.version).to eq "v1"
-          }
-          worker.process_decision_task
-        end
-
-        context "given no app in charge" do
-          let(:input) { ["legacy_stuff", {}].to_json }
-
-          it "should schedule an activity task for a guessed task list" do
-            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-                task_list: "atl"))
-            worker.process_decision_task
-          end
-        end
+        it_behaves_like "scheduling an activity task"
       end
 
-      describe "ActivityTaskFailed" do
+      context "ActivityTaskFailed" do
         let(:event_type) {"ActivityTaskFailed"}
 
         context "without retry" do
@@ -137,38 +217,28 @@ describe Ntswf::DecisionWorker do
 
           it "should fail" do
             expect(task).to receive(:fail_workflow_execution)
-            worker.process_decision_task
+            process_task
           end
 
           it "should not re-schedule the task" do
             expect(task).not_to receive(:schedule_activity_task)
-            worker.process_decision_task
+            process_task
           end
         end
 
         context "with retry" do
           let(:reason) { "Retry" }
 
-          it "should not fail" do
+          it "does not fail" do
             expect(task).not_to receive(:fail_workflow_execution)
-            worker.process_decision_task
+            process_task
           end
 
-          it "should re-schedule the task" do
-            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-              heartbeat_timeout: :none,
-              input: input,
-              schedule_to_close_timeout: anything,
-              schedule_to_start_timeout: anything,
-              start_to_close_timeout: anything,
-              task_list: "atl",
-            ))
-            worker.process_decision_task
-          end
+          it_behaves_like "scheduling an activity task"
         end
       end
 
-      describe "TimerFired" do
+      context "TimerFired" do
         let(:event_type) {"TimerFired"}
         let(:started_attributes_hash) { {} }
         let(:started_attributes) do
@@ -194,7 +264,7 @@ describe Ntswf::DecisionWorker do
           it "should continue with mandatory attributes" do
             expect(task).to receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
-            worker.process_decision_task
+            process_task
           end
         end
 
@@ -205,31 +275,23 @@ describe Ntswf::DecisionWorker do
           it "should continue as new" do
             expect(task).to receive(:continue_as_new_workflow_execution).with(hash_including(
                 attributes_hash))
-            worker.process_decision_task
+            process_task
           end
 
-          describe "backwards compatibility" do
+          context "backwards compatibility" do
             let(:control) { {perform_again: 9}.to_json }
 
             it "should continue as new" do
               expect(task).to receive(:continue_as_new_workflow_execution)
-              worker.process_decision_task
+              process_task
             end
           end
         end
 
         context "given no interval" do
-          it "should re-schedule, assuming seconds_until_retry was set" do
-            expect(task).to receive(:schedule_activity_task).with(anything, hash_including(
-              heartbeat_timeout: :none,
-              input: input,
-              schedule_to_close_timeout: anything,
-              schedule_to_start_timeout: anything,
-              start_to_close_timeout: anything,
-              task_list: "atl",
-            ))
-            worker.process_decision_task
-          end
+          let(:options) { {} }
+
+          it_behaves_like "scheduling an activity task"
         end
       end
 
@@ -248,19 +310,29 @@ describe Ntswf::DecisionWorker do
 
             it "should start a timer" do
               expect(task).to receive(:start_timer).with(1234, anything)
-              worker.process_decision_task
+              process_task
             end
           end
         end
 
-        describe "string options for compatibility" do
+        context "string options for compatibility" do
           let(:event_type) { "ActivityTaskCompleted" }
           let(:input) { ["interval", {}].to_json }
 
           it "should not be interpreted" do
             expect(task).not_to receive :start_timer
-            worker.process_decision_task
+            process_task
           end
+        end
+      end
+
+      context "with missing decision task list configuration" do
+        let(:event_type) { "does not matter" }
+        let(:config) { default_config.merge(decision_task_lists: {"other" => "foo"}) }
+
+        it "fails" do
+          expect { process_task }.to raise_error(
+              Ntswf::Errors::InvalidArgument, /Missing decision task list.*'default-unit'/)
         end
       end
     end

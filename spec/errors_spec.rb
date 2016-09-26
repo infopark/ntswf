@@ -44,14 +44,27 @@ describe Ntswf::Client do
   end
 
   describe "invalid arguments" do
-    describe "given invalid task list name" do
+    describe "given invalid decision task list name" do
+      subject { exception_for { client.configure(decision_task_lists: { a: "not valid" }) } }
+      it { is_expected.to be_kind_of RuntimeError }
+      it { is_expected.to be_kind_of Ntswf::Errors::InvalidArgument }
+      its(:message) { should include "Invalid config" }
+    end
+
+    describe "given decision task list name with reserved separator" do
+      subject { exception_for { client.configure(decision_task_lists: { a: "a;b" }) } }
+      it { is_expected.to be_kind_of Ntswf::Errors::InvalidArgument }
+      its(:message) { should include "reserved" }
+    end
+
+    describe "given invalid activity task list name" do
       subject { exception_for { client.configure(activity_task_lists: { a: "not valid" }) } }
       it { is_expected.to be_kind_of RuntimeError }
       it { is_expected.to be_kind_of Ntswf::Errors::InvalidArgument }
       its(:message) { should include "Invalid config" }
     end
 
-    describe "given task list name with reserved separator" do
+    describe "given activity task list name with reserved separator" do
       subject { exception_for { client.configure(activity_task_lists: { a: "a;b" }) } }
       it { is_expected.to be_kind_of Ntswf::Errors::InvalidArgument }
       its(:message) { should include "reserved" }
