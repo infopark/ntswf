@@ -39,7 +39,6 @@ module Ntswf
     # @raise [Errors::InvalidArgument] If a task list name is invalid.
     def configure(config)
       @config = OpenStruct.new(config)
-      autocomplete_task_list_names!
       raise_if_invalid_task_list
     end
 
@@ -78,7 +77,7 @@ module Ntswf
     end
 
     def activity_task_lists
-      @config.activity_task_lists
+      autocompleted_activity_task_lists || {}
     end
 
     def activity_task_list(unit: nil)
@@ -88,7 +87,7 @@ module Ntswf
     end
 
     def decision_task_lists
-      @config.decision_task_lists
+      autocompleted_decision_task_lists || fallback_decision_task_lists
     end
 
     def decision_task_list(unit: nil)
@@ -147,9 +146,7 @@ module Ntswf
     end
 
     def raise_if_invalid_task_list
-      atl_values = activity_task_lists.values if activity_task_lists
-      dtl_values = decision_task_lists.values if decision_task_lists
-      [*atl_values, *dtl_values, *@config.decision_task_list].each do |task_list|
+      all_task_list_names.each do |task_list|
         if task_list.include?(separator)
           raise Errors::InvalidArgument.new(
               "Invalid config '#{task_list}': Separator '#{separator}' is reserved for internal use.")
@@ -161,22 +158,26 @@ module Ntswf
       end
     end
 
-    def autocomplete_task_list_names!
-      if @config.decision_task_lists
-        @config.decision_task_lists = @config.decision_task_lists.dup
-        @config.decision_task_lists.each do |key, value|
-          @config.decision_task_lists[key] = autocomplete(value, "#{key}-dtl")
-        end
-      else
-        @config.decision_task_lists =
-            {default_unit => autocomplete(@config.decision_task_list, "master-dtl")}
-      end
-      if @config.activity_task_lists
-        @config.activity_task_lists = @config.activity_task_lists.dup
-        @config.activity_task_lists.each do |key, value|
-          @config.activity_task_lists[key] = autocomplete(value, "#{key}-atl")
-        end
-      end
+    def all_task_list_names
+      [*activity_task_lists.values, *decision_task_lists.values, *@config.decision_task_list]
+    end
+
+    def autocompleted_activity_task_lists
+      autocompleted_task_lists(@config.activity_task_lists, :atl)
+    end
+
+    def autocompleted_decision_task_lists
+      autocompleted_task_lists(@config.decision_task_lists, :dtl)
+    end
+
+    def autocompleted_task_lists(raw_task_lists, suffix)
+      Hash(raw_task_lists).map do |unit, name|
+        {unit => autocomplete(name, "#{unit}-#{suffix}")}
+      end.reduce(:merge)
+    end
+
+    def fallback_decision_task_lists
+      {default_unit => autocomplete(@config.decision_task_list, "master-dtl")}
     end
 
     def autocomplete(value, fallback)

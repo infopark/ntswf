@@ -39,7 +39,7 @@ Ntswf.create(:decision_worker, config).process_decisions
 ```
 config = {domain: 'my_domain', unit: 'my_worker'} # ...
 worker = Ntswf.create(:activity_worker, config)
-worker.on_task ->(task) { Ntswf.result task.params['my_param'] }
+worker.on_activity ->(task) { {outcome: task.params['my_param']} }
 worker.process_activities
 ```
 
